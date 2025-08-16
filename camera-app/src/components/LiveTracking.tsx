@@ -1,9 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useAppSelector, useAppDispatch } from '../store/hooks'
-import { processVideoFrame, startTracking, stopTracking, clearPositions } from '../store/eyeTrackingSlice'
-import { sendWebSocketMessage } from '../store/webSocketSlice'
-import type { EyePosition } from '../types'
+import { setRecording, clearRecordingBuffer } from '../store/eyeTrackingSlice'
 
 interface LiveTrackingProps {
   onStopTracking: () => void
@@ -11,57 +8,20 @@ interface LiveTrackingProps {
 
 export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
   const dispatch = useAppDispatch()
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const animationRef = useRef<number | null>(null)
   
-  const { stream } = useAppSelector(state => state.videoStream)
-  const { positions: eyePositions, isTracking, currentPosition } = useAppSelector(state => state.eyeTracking)
+  const { positions: eyePositions, isTracking, isRecording, recordingBuffer } = useAppSelector(state => state.eyeTracking)
 
-  const startEyeTracking = useCallback(() => {
-    if (!stream) return
-    
-    const trackEyes = () => {
-      if (stream && isTracking) {
-        dispatch(processVideoFrame(stream))
-      }
-      
-      animationRef.current = requestAnimationFrame(trackEyes)
-    }
-    
-    trackEyes()
-  }, [stream, isTracking, dispatch])
-
-  const handleStartTracking = () => {
-    dispatch(startTracking())
+  const handleStartRecording = () => {
+    dispatch(setRecording(true))
   }
 
-  const handlePauseTracking = () => {
-    dispatch(stopTracking())
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current)
-      animationRef.current = null
-    }
+  const handleStopRecording = () => {
+    dispatch(setRecording(false))
   }
 
-  const handleResetTracking = () => {
-    dispatch(clearPositions())
-    dispatch(stopTracking())
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current)
-      animationRef.current = null
-    }
+  const handleClearRecording = () => {
+    dispatch(clearRecordingBuffer())
   }
-
-  // Send WebSocket messages when currentPosition changes
-  useEffect(() => {
-    if (currentPosition && isTracking) {
-      dispatch(sendWebSocketMessage({
-        type: 'eye_position',
-        data: currentPosition,
-        timestamp: Date.now()
-      }))
-    }
-  }, [currentPosition, isTracking, dispatch])
 
   // Get live data for the last 10 seconds with fixed window
   const getLiveData = () => {
@@ -99,30 +59,11 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
   }
 
   const handleStopTracking = () => {
-    dispatch(stopTracking())
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current)
+    if (isRecording) {
+      dispatch(setRecording(false))
     }
     onStopTracking()
   }
-
-  useEffect(() => {
-    if (stream && videoRef.current) {
-      videoRef.current.srcObject = stream
-    }
-  }, [stream])
-
-  useEffect(() => {
-    if (isTracking) {
-      startEyeTracking()
-    }
-    
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
-    }
-  }, [isTracking, startEyeTracking])
 
   const latestPos = getLatestPosition()
   const liveData = getLiveData()
@@ -130,21 +71,21 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
   return (
     <div className="step-container">
       <h2>Eye Tracking Active</h2>
-      <p>Your eye movements are being tracked in real-time.</p>
+      <p>Your eye movements are being tracked in real-time. Use the webcam debugger in the bottom left to see your camera feed.</p>
       
       <div className="tracking-controls">
         <div className="control-group">
-          {!isTracking ? (
-            <button onClick={handleStartTracking} className="control-btn play">
-              ▶️ Start Tracking
+          {!isRecording ? (
+            <button onClick={handleStartRecording} className="control-btn play">
+              🔴 Start Recording
             </button>
           ) : (
-            <button onClick={handlePauseTracking} className="control-btn pause">
-              ⏸️ Pause Tracking
+            <button onClick={handleStopRecording} className="control-btn pause">
+              ⏹️ Stop Recording
             </button>
           )}
-          <button onClick={handleResetTracking} className="control-btn reset">
-            🔄 Reset Data
+          <button onClick={handleClearRecording} className="control-btn reset">
+            🗑️ Clear Recording Buffer
           </button>
         </div>
         
@@ -152,6 +93,10 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
           <div className={`status-indicator ${isTracking ? 'active' : 'inactive'}`}>
             {isTracking ? '🟢 Tracking Active' : '🔴 Tracking Paused'}
           </div>
+          <div className={`status-indicator ${isRecording ? 'active' : 'inactive'}`}>
+            {isRecording ? '🔴 Recording Active' : '⚪ Recording Paused'}
+          </div>
+
         </div>
       </div>
       
@@ -161,8 +106,16 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
           <span className="stat-value">{latestPos.x.toFixed(1)}</span>
         </div>
         <div className="stat">
+          <span className="stat-label">Current Y Position:</span>
+          <span className="stat-value">{latestPos.y.toFixed(1)}</span>
+        </div>
+        <div className="stat">
           <span className="stat-label">Points Tracked:</span>
           <span className="stat-value">{eyePositions.length}</span>
+        </div>
+        <div className="stat">
+          <span className="stat-label">Recording Buffer:</span>
+          <span className="stat-value">{recordingBuffer.length}</span>
         </div>
         <div className="stat">
           <span className="stat-label">Window Size:</span>
@@ -185,7 +138,7 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
               tick={{ fontSize: 12 }}
             />
             <Tooltip 
-              formatter={(value, name) => [value, 'X Position']}
+              formatter={(value) => [value, 'X Position']}
               labelFormatter={(label) => `Time: ${label}s`}
             />
             <Area 
@@ -204,15 +157,6 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
       <button onClick={handleStopTracking} className="secondary-btn">
         Stop Tracking & View Playback
       </button>
-      
-      {/* Hidden video element for camera access */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        style={{ display: 'none' }}
-      />
     </div>
   )
 } 

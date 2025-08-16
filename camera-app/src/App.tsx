@@ -1,22 +1,21 @@
 import { useAppSelector, useAppDispatch } from './store/hooks'
 import { startVideoStream, stopVideoStream } from './store/videoStreamSlice'
-import { connectWebSocket, disconnectWebSocket } from './store/webSocketSlice'
+
 import { setCurrentStep, resetApp } from './store/appSlice'
 import Calibration from './components/Calibration'
 import LiveTracking from './components/LiveTracking'
 import Playback from './components/Playback'
+import WebcamDebugger from './components/WebcamDebugger'
 import './App.css'
 
 function App() {
   const dispatch = useAppDispatch()
   const { currentStep } = useAppSelector(state => state.app)
-  const { isActive: isCameraActive, error } = useAppSelector(state => state.videoStream)
-  const { isConnected: isWebSocketConnected } = useAppSelector(state => state.webSocket)
+  const { isActive: isCameraActive, error, stream } = useAppSelector(state => state.videoStream)
 
   const handleStartCamera = async () => {
     try {
       await dispatch(startVideoStream()).unwrap()
-      await dispatch(connectWebSocket()).unwrap()
       dispatch(setCurrentStep('calibration'))
     } catch (error) {
       console.error('Failed to start camera:', error)
@@ -26,7 +25,6 @@ function App() {
   const handleStopCamera = async () => {
     try {
       await dispatch(stopVideoStream()).unwrap()
-      await dispatch(disconnectWebSocket()).unwrap()
       dispatch(resetApp())
     } catch (error) {
       console.error('Failed to stop camera:', error)
@@ -74,9 +72,7 @@ function App() {
           <div className={`status ${isCameraActive ? 'active' : 'inactive'}`}>
             📹 Camera: {isCameraActive ? 'Active' : 'Inactive'}
           </div>
-          <div className={`status ${isWebSocketConnected ? 'active' : 'inactive'}`}>
-            🌐 WebSocket: {isWebSocketConnected ? 'Connected' : 'Disconnected'}
-          </div>
+
         </div>
       </header>
       
@@ -97,6 +93,9 @@ function App() {
       {currentStep === 'calibration' && (
         <Calibration onCalibrationComplete={handleCalibrationComplete} />
       )}
+      
+      {/* Global Webcam Debugger - only show when camera is active */}
+      {isCameraActive && <WebcamDebugger stream={stream} />}
     </div>
   )
 }

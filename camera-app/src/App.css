@@ -636,6 +636,19 @@
   margin-bottom: 1rem;
 }
 
+.calibration-instruction {
+  font-size: 1.4rem !important;
+  font-weight: 600 !important;
+  color: #2d3748 !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.calibration-reminder {
+  font-size: 1.1rem !important;
+  color: #718096 !important;
+  font-style: italic;
+}
+
 .calibration-target-fullscreen {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -729,5 +742,123 @@
   .target-pulse {
     width: 40px;
     height: 40px;
+  }
+}
+
+/* Webcam Debugger Styles */
+.webcam-debugger {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 200px;
+  height: 150px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  border: 2px solid #667eea;
+  z-index: 1000;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.webcam-debug-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(102, 126, 234, 0.9);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.webcam-debug-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.webcam-debug-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.webcam-debug-video {
+  width: 100%;
+  height: calc(100% - 36px);
+  object-fit: cover;
+  background: #000;
+}
+
+.webcam-debug-toggle {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: 50px;
+  height: 50px;
+  background: rgba(102, 126, 234, 0.9);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.webcam-debug-toggle:hover {
+  background: rgba(102, 126, 234, 1);
+  transform: scale(1.1);
+}
+
+/* Responsive design for webcam debugger */
+@media (max-width: 768px) {
+  .webcam-debugger {
+    width: 150px;
+    height: 112px;
+    bottom: 15px;
+    left: 15px;
+  }
+  
+  .webcam-debug-toggle {
+    width: 45px;
+    height: 45px;
+    bottom: 15px;
+    left: 15px;
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .webcam-debugger {
+    width: 120px;
+    height: 90px;
+    bottom: 10px;
+    left: 10px;
+  }
+  
+  .webcam-debug-header {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  
+  .webcam-debug-toggle {
+    width: 40px;
+    height: 40px;
+    bottom: 10px;
+    left: 10px;
+    font-size: 16px;
   }
 }

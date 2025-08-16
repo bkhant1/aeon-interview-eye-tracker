@@ -2,37 +2,23 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { EyePosition } from '../types'
 
-// Mock eye tracking function - will be replaced with real implementation later
-const mockEyeTracking = (videoStream: MediaStream): EyePosition => {
-  const now = Date.now();
-  const time = now / 1000; // Convert to seconds
-  return {
-    x: Math.sin(time) * 100 + 200, // Sinusoidal movement in x
-    y: Math.cos(time * 0.5) * 50 + 150, // Slower sinusoidal movement in y
-    timestamp: now
-  };
-};
-
-export const processVideoFrame = createAsyncThunk(
-  'eyeTracking/processFrame',
-  async (stream: MediaStream) => {
-    // Mock processing - in real implementation, this would analyze the video frame
-    const position = mockEyeTracking(stream)
-    return position
-  }
-)
+// Constants
+const POSITION_BUFFER_SIZE = 30;
+const RECORDING_BUFFER_SIZE = 1000;
 
 export const startTracking = createAsyncThunk(
   'eyeTracking/start',
-  async () => {
-    return true
+  async (_stream: MediaStream) => {
+    // For now, just return success - actual tracking will be handled by components
+    return true;
   }
 )
 
 export const stopTracking = createAsyncThunk(
   'eyeTracking/stop',
   async () => {
-    return false
+    // For now, just return success - cleanup will be handled by components
+    return false;
   }
 )
 
@@ -42,14 +28,28 @@ const eyeTrackingSlice = createSlice({
     positions: [] as EyePosition[],
     isTracking: false,
     currentPosition: null as EyePosition | null,
+    recordingBuffer: [] as EyePosition[],
+    isRecording: false,
+    showWebcamDebug: true, // New state for webcam debug visibility
   },
   reducers: {
     addPosition: (state, action: PayloadAction<EyePosition>) => {
       state.positions.push(action.payload)
       state.currentPosition = action.payload
-      // Keep only last 500 positions for performance
-      if (state.positions.length > 500) {
-        state.positions = state.positions.slice(-500)
+      
+      // Keep only last POSITION_BUFFER_SIZE positions for performance
+      if (state.positions.length > POSITION_BUFFER_SIZE) {
+        state.positions = state.positions.slice(-POSITION_BUFFER_SIZE)
+      }
+      
+      // If recording, add to recording buffer
+      if (state.isRecording) {
+        state.recordingBuffer.push(action.payload)
+        
+        // Keep only last RECORDING_BUFFER_SIZE positions in recording buffer
+        if (state.recordingBuffer.length > RECORDING_BUFFER_SIZE) {
+          state.recordingBuffer = state.recordingBuffer.slice(-RECORDING_BUFFER_SIZE)
+        }
       }
     },
     clearPositions: (state) => {
@@ -59,17 +59,25 @@ const eyeTrackingSlice = createSlice({
     setTracking: (state, action: PayloadAction<boolean>) => {
       state.isTracking = action.payload
     },
+    setRecording: (state, action: PayloadAction<boolean>) => {
+      state.isRecording = action.payload
+      if (!action.payload) {
+        // Clear recording buffer when stopping recording
+        state.recordingBuffer = []
+      }
+    },
+    clearRecordingBuffer: (state) => {
+      state.recordingBuffer = []
+    },
+    toggleWebcamDebug: (state) => {
+      state.showWebcamDebug = !state.showWebcamDebug
+    },
+    setWebcamDebug: (state, action: PayloadAction<boolean>) => {
+      state.showWebcamDebug = action.payload
+    },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(processVideoFrame.fulfilled, (state, action) => {
-        state.currentPosition = action.payload
-        state.positions.push(action.payload)
-        // Keep only last 500 positions for performance
-        if (state.positions.length > 500) {
-          state.positions = state.positions.slice(-500)
-        }
-      })
       .addCase(startTracking.fulfilled, (state) => {
         state.isTracking = true
       })
@@ -79,7 +87,13 @@ const eyeTrackingSlice = createSlice({
   },
 })
 
-// WebSocket messages will be handled in the component layer to avoid circular dependencies
-
-export const { addPosition, clearPositions, setTracking } = eyeTrackingSlice.actions
+export const { 
+  addPosition, 
+  clearPositions, 
+  setTracking, 
+  setRecording, 
+  clearRecordingBuffer, 
+  toggleWebcamDebug,
+  setWebcamDebug
+} = eyeTrackingSlice.actions
 export default eyeTrackingSlice.reducer 

@@ -16,10 +16,12 @@ export const startVideoStream = createAsyncThunk(
         video: {
           width: { ideal: 640 },
           height: { ideal: 480 },
-          facingMode: 'user'
+          facingMode: 'user',
+          frameRate: { min: 30, ideal: 30, max: 30 }
         },
         audio: false
       })
+      
       return stream
     } catch (error) {
       return rejectWithValue('Failed to access camera. Please make sure you have granted camera permissions.')

@@ -2,6 +2,7 @@ export interface EyePosition {
   x: number;
   y: number;
   timestamp: number;
+  confidence?: number;
 }
 
 export interface VideoStreamState {
@@ -14,29 +15,21 @@ export interface EyeTrackingState {
   positions: EyePosition[];
   isTracking: boolean;
   currentPosition: EyePosition | null;
-}
-
-export interface WebSocketState {
-  isConnected: boolean;
-  isConnecting: boolean;
-  error: string | null;
-  messagesSent: number;
+  recordingBuffer: EyePosition[];
+  isRecording: boolean;
+  showWebcamDebug: boolean;
 }
 
 export interface AppState {
   currentStep: 'permission' | 'calibration' | 'tracking' | 'playback';
   calibrationPoints: { x: number; y: number }[];
+  sessionId: string;
 }
 
 export interface RootState {
   videoStream: VideoStreamState;
   eyeTracking: EyeTrackingState;
-  webSocket: WebSocketState;
   app: AppState;
 }
 
-export interface WebSocketMessage {
-  type: 'eye_position' | 'calibration' | 'tracking_start' | 'tracking_stop';
-  data: any;
-  timestamp: number;
-} 
+ 
