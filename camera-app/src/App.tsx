@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
 import './App.css'
 
 interface EyePosition {
@@ -20,8 +21,7 @@ const mockEyeTracking = (videoStream: MediaStream): EyePosition => {
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [currentStep, setCurrentStep] = useState<'permission' | 'calibration' | 'tracking'>('permission')
+  const [currentStep, setCurrentStep] = useState<'permission' | 'calibration' | 'tracking' | 'playback'>('permission')
   const [isCameraActive, setIsCameraActive] = useState(false)
   const [error, setError] = useState<string>('')
   const [calibrationPoints, setCalibrationPoints] = useState<{ x: number; y: number }[]>([])
@@ -29,12 +29,18 @@ function App() {
   const [eyePositions, setEyePositions] = useState<EyePosition[]>([])
   const [isTracking, setIsTracking] = useState(false)
   const animationRef = useRef<number | null>(null)
+  
+  // Playback controls
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [playbackSpeed, setPlaybackSpeed] = useState(1)
+  const [currentTimeIndex, setCurrentTimeIndex] = useState(0)
+  const [playbackStartTime, setPlaybackStartTime] = useState<number>(0)
 
   const calibrationTargets = [
-    { x: 50, y: 50 },   // Top-left
-    { x: 50, y: 50 },   // Top-right
-    { x: 50, y: 50 },   // Bottom-left
-    { x: 50, y: 50 },   // Bottom-right
+    { x: 20, y: 20 },   // Top-left
+    { x: 80, y: 20 },   // Top-right
+    { x: 20, y: 80 },   // Bottom-left
+    { x: 80, y: 80 },   // Bottom-right
     { x: 50, y: 50 },   // Center
   ];
 
@@ -74,7 +80,15 @@ function App() {
     }
   }
 
-  // Remove unused function
+  const stopTracking = () => {
+    setIsTracking(false)
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current)
+    }
+    setCurrentStep('playback')
+    setCurrentTimeIndex(0)
+    setIsPlaying(false)
+  }
 
   const captureCalibrationPoint = () => {
     if (videoRef.current && videoRef.current.srcObject) {
@@ -96,6 +110,7 @@ function App() {
   const startEyeTracking = useCallback(() => {
     setIsTracking(true)
     setEyePositions([])
+    setPlaybackStartTime(Date.now())
     
     const trackEyes = () => {
       if (videoRef.current && videoRef.current.srcObject && isTracking) {
@@ -104,8 +119,8 @@ function App() {
         
         setEyePositions(prev => {
           const newPositions = [...prev, position]
-          // Keep only last 100 positions for performance
-          return newPositions.slice(-100)
+          // Keep more positions for playback
+          return newPositions.slice(-500)
         })
       }
       
@@ -115,102 +130,86 @@ function App() {
     trackEyes()
   }, [isTracking])
 
-  const drawEyeTrackingGraph = () => {
-    const canvas = canvasRef.current
-    if (!canvas || eyePositions.length === 0) return
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-    // Set up graph area
-    const padding = 40
-    const graphWidth = canvas.width - 2 * padding
-    const graphHeight = canvas.height - 2 * padding
-
-    // Find min/max values for scaling
-    const xValues = eyePositions.map(p => p.x)
-    const yValues = eyePositions.map(p => p.y)
-    const minX = Math.min(...xValues)
-    const maxX = Math.max(...xValues)
-    const minY = Math.min(...yValues)
-    const maxY = Math.max(...yValues)
-
-    // Draw grid
-    ctx.strokeStyle = '#e2e8f0'
-    ctx.lineWidth = 1
-    for (let i = 0; i <= 10; i++) {
-      const x = padding + (i / 10) * graphWidth
-      const y = padding + (i / 10) * graphHeight
-      
-      // Vertical lines
-      ctx.beginPath()
-      ctx.moveTo(x, padding)
-      ctx.lineTo(x, canvas.height - padding)
-      ctx.stroke()
-      
-      // Horizontal lines
-      ctx.beginPath()
-      ctx.moveTo(padding, y)
-      ctx.lineTo(canvas.width - padding, y)
-      ctx.stroke()
-    }
-
-    // Draw eye tracking path
-    if (eyePositions.length > 1) {
-      ctx.strokeStyle = '#667eea'
-      ctx.lineWidth = 3
-      ctx.beginPath()
-      
-      eyePositions.forEach((pos, index) => {
-        const x = padding + ((pos.x - minX) / (maxX - minX)) * graphWidth
-        const y = padding + ((pos.y - minY) / (maxY - minY)) * graphHeight
-        
-        if (index === 0) {
-          ctx.moveTo(x, y)
-        } else {
-          ctx.lineTo(x, y)
-        }
-      })
-      
-      ctx.stroke()
-    }
-
-    // Draw current position
-    if (eyePositions.length > 0) {
-      const currentPos = eyePositions[eyePositions.length - 1]
-      const x = padding + ((currentPos.x - minX) / (maxX - minX)) * graphWidth
-      const y = padding + ((currentPos.y - minY) / (maxY - minY)) * graphHeight
-      
-      ctx.fillStyle = '#f56565'
-      ctx.beginPath()
-      ctx.arc(x, y, 6, 0, 2 * Math.PI)
-      ctx.fill()
-    }
-
-    // Draw labels
-    ctx.fillStyle = '#4a5568'
-    ctx.font = '12px Arial'
-    ctx.textAlign = 'center'
+  // Get live data for the last 10 seconds
+  const getLiveData = () => {
+    if (eyePositions.length === 0) return []
     
-    // X-axis label
-    ctx.fillText('X Position', canvas.width / 2, canvas.height - 10)
+    const tenSecondsAgo = Date.now() - 10000 // 10 seconds ago
+    const recentPositions = eyePositions.filter(pos => pos.timestamp >= tenSecondsAgo)
     
-    // Y-axis label
-    ctx.save()
-    ctx.translate(15, canvas.height / 2)
-    ctx.rotate(-Math.PI / 2)
-    ctx.fillText('Y Position', 0, 0)
-    ctx.restore()
+    return recentPositions.map((pos, index) => ({
+      time: index,
+      x: pos.x,
+      y: pos.y,
+      timestamp: pos.timestamp
+    }))
   }
 
+  // Playback controls
+  const togglePlayback = () => {
+    setIsPlaying(!isPlaying)
+  }
+
+  const resetPlayback = () => {
+    setCurrentTimeIndex(0)
+    setIsPlaying(false)
+  }
+
+  const handleTimelineChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newIndex = parseInt(event.target.value)
+    setCurrentTimeIndex(newIndex)
+  }
+
+  const handleSpeedChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setPlaybackSpeed(parseFloat(event.target.value))
+  }
+
+  // Playback effect
   useEffect(() => {
-    if (currentStep === 'tracking' && eyePositions.length > 0) {
-      drawEyeTrackingGraph()
+    if (isPlaying && eyePositions.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentTimeIndex(prev => {
+          const next = prev + playbackSpeed
+          if (next >= eyePositions.length) {
+            setIsPlaying(false)
+            return eyePositions.length - 1
+          }
+          return next
+        })
+      }, 100) // Update every 100ms
+
+      return () => clearInterval(interval)
     }
-  }, [eyePositions, currentStep])
+  }, [isPlaying, playbackSpeed, eyePositions.length])
+
+  // Get current playback data
+  const getCurrentPlaybackData = () => {
+    if (eyePositions.length === 0) return []
+    
+    const endIndex = Math.min(currentTimeIndex + 1, eyePositions.length)
+    return eyePositions.slice(0, endIndex).map((pos, index) => ({
+      time: index,
+      x: pos.x,
+      y: pos.y,
+      timestamp: pos.timestamp
+    }))
+  }
+
+  // Get current position for stats
+  const getCurrentPosition = () => {
+    if (eyePositions.length === 0 || currentTimeIndex >= eyePositions.length) {
+      return { x: 0, y: 0 }
+    }
+    return eyePositions[currentTimeIndex]
+  }
+
+  // Get latest position for live tracking
+  const getLatestPosition = () => {
+    if (eyePositions.length === 0) {
+      return { x: 0, y: 0 }
+    }
+    return eyePositions[eyePositions.length - 1]
+  }
 
   useEffect(() => {
     return () => {
@@ -268,44 +267,196 @@ function App() {
     </div>
   )
 
-  const renderTrackingStep = () => (
-    <div className="step-container">
-      <h2>Eye Tracking Active</h2>
-      <p>Your eye movements are being tracked in real-time.</p>
-      
-      <div className="tracking-stats">
-        <div className="stat">
-          <span className="stat-label">Current X:</span>
-          <span className="stat-value">
-            {eyePositions.length > 0 ? eyePositions[eyePositions.length - 1].x.toFixed(1) : '0.0'}
-          </span>
+  const renderTrackingStep = () => {
+    const latestPos = getLatestPosition()
+    const liveData = getLiveData()
+    
+    return (
+      <div className="step-container">
+        <h2>Eye Tracking Active</h2>
+        <p>Your eye movements are being tracked in real-time.</p>
+        
+        <div className="tracking-stats">
+          <div className="stat">
+            <span className="stat-label">Current X:</span>
+            <span className="stat-value">{latestPos.x.toFixed(1)}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-label">Current Y:</span>
+            <span className="stat-value">{latestPos.y.toFixed(1)}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-label">Points Tracked:</span>
+            <span className="stat-value">{eyePositions.length}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-label">Live Data Points:</span>
+            <span className="stat-value">{liveData.length}</span>
+          </div>
         </div>
-        <div className="stat">
-          <span className="stat-label">Current Y:</span>
-          <span className="stat-value">
-            {eyePositions.length > 0 ? eyePositions[eyePositions.length - 1].y.toFixed(1) : '0.0'}
-          </span>
+        
+        <div className="live-chart-container">
+          <h3>Live Tracking (Last 10 Seconds)</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={liveData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="time" 
+                label={{ value: 'Time (Last 10s)', position: 'insideBottom', offset: -10 }}
+              />
+              <YAxis 
+                label={{ value: 'Position', angle: -90, position: 'insideLeft' }}
+              />
+              <Tooltip 
+                formatter={(value, name) => [value, name === 'x' ? 'X Position' : 'Y Position']}
+                labelFormatter={(label) => `Time: ${label}`}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="x" 
+                stroke="#667eea" 
+                fill="#667eea" 
+                fillOpacity={0.3}
+                name="X Position"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="y" 
+                stroke="#f56565" 
+                fill="#f56565" 
+                fillOpacity={0.3}
+                name="Y Position"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
-        <div className="stat">
-          <span className="stat-label">Points Tracked:</span>
-          <span className="stat-value">{eyePositions.length}</span>
+        
+        <button onClick={stopTracking} className="secondary-btn">
+          Stop Tracking & View Playback
+        </button>
+      </div>
+    )
+  }
+
+  const renderPlaybackStep = () => {
+    const currentPos = getCurrentPosition()
+    const playbackData = getCurrentPlaybackData()
+    
+    return (
+      <div className="step-container">
+        <h2>Eye Tracking Playback</h2>
+        <p>Review your eye tracking session with playback controls.</p>
+        
+        <div className="tracking-stats">
+          <div className="stat">
+            <span className="stat-label">Current X:</span>
+            <span className="stat-value">{currentPos.x.toFixed(1)}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-label">Current Y:</span>
+            <span className="stat-value">{currentPos.y.toFixed(1)}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-label">Total Points:</span>
+            <span className="stat-value">{eyePositions.length}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-label">Playback Position:</span>
+            <span className="stat-value">{currentTimeIndex + 1} / {eyePositions.length}</span>
+          </div>
+        </div>
+        
+        <div className="playback-controls">
+          <div className="control-group">
+            <button 
+              onClick={togglePlayback} 
+              className={`control-btn ${isPlaying ? 'pause' : 'play'}`}
+            >
+              {isPlaying ? '⏸️ Pause' : '▶️ Play'}
+            </button>
+            <button onClick={resetPlayback} className="control-btn reset">
+              🔄 Reset
+            </button>
+          </div>
+          
+          <div className="control-group">
+            <label htmlFor="speed-select">Speed:</label>
+            <select 
+              id="speed-select"
+              value={playbackSpeed} 
+              onChange={handleSpeedChange}
+              className="speed-select"
+            >
+              <option value={0.5}>0.5x</option>
+              <option value={1}>1x</option>
+              <option value={2}>2x</option>
+              <option value={5}>5x</option>
+              <option value={10}>10x</option>
+            </select>
+          </div>
+        </div>
+        
+        <div className="timeline-container">
+          <input
+            type="range"
+            min="0"
+            max={Math.max(0, eyePositions.length - 1)}
+            value={currentTimeIndex}
+            onChange={handleTimelineChange}
+            className="timeline-slider"
+          />
+          <div className="timeline-labels">
+            <span>Start</span>
+            <span>End</span>
+          </div>
+        </div>
+        
+        <div className="chart-container">
+          <ResponsiveContainer width="100%" height={400}>
+            <AreaChart data={playbackData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="time" 
+                label={{ value: 'Time', position: 'insideBottom', offset: -10 }}
+              />
+              <YAxis 
+                label={{ value: 'Position', angle: -90, position: 'insideLeft' }}
+              />
+              <Tooltip 
+                formatter={(value, name) => [value, name === 'x' ? 'X Position' : 'Y Position']}
+                labelFormatter={(label) => `Time: ${label}`}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="x" 
+                stroke="#667eea" 
+                fill="#667eea" 
+                fillOpacity={0.3}
+                name="X Position"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="y" 
+                stroke="#f56565" 
+                fill="#f56565" 
+                fillOpacity={0.3}
+                name="Y Position"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+        
+        <div className="playback-actions">
+          <button onClick={() => setCurrentStep('tracking')} className="primary-btn">
+            Start New Tracking Session
+          </button>
+          <button onClick={stopCamera} className="secondary-btn">
+            Exit Application
+          </button>
         </div>
       </div>
-      
-      <div className="graph-container">
-        <canvas 
-          ref={canvasRef} 
-          width={600} 
-          height={400}
-          className="eye-tracking-graph"
-        />
-      </div>
-      
-      <button onClick={stopCamera} className="secondary-btn">
-        Stop Tracking
-      </button>
-    </div>
-  )
+    )
+  }
 
   return (
     <div className="App">
@@ -315,6 +466,7 @@ function App() {
           <div className={`step ${currentStep === 'permission' ? 'active' : ''}`}>1. Permission</div>
           <div className={`step ${currentStep === 'calibration' ? 'active' : ''}`}>2. Calibration</div>
           <div className={`step ${currentStep === 'tracking' ? 'active' : ''}`}>3. Tracking</div>
+          <div className={`step ${currentStep === 'playback' ? 'active' : ''}`}>4. Playback</div>
         </div>
       </header>
       
@@ -322,6 +474,7 @@ function App() {
         {currentStep === 'permission' && renderPermissionStep()}
         {currentStep === 'calibration' && renderCalibrationStep()}
         {currentStep === 'tracking' && renderTrackingStep()}
+        {currentStep === 'playback' && renderPlaybackStep()}
         
         {/* Hidden video element for camera access */}
         <video
