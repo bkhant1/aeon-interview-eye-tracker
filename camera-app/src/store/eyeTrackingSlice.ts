@@ -1,47 +1,49 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { EyePosition } from '../types'
-import { FaceMesh } from '@mediapipe/face_mesh'
+import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 
 // Constants
 const POSITION_BUFFER_SIZE = 30;
 const RECORDING_BUFFER_SIZE = 1000;
 
-// MediaPipe face mesh instance
-let faceLandmarker: FaceMesh | null = null;
+// MediaPipe face landmarker instance
+let faceLandmarker: FaceLandmarker | null = null;
 let lastVideoTime = -1;
 let animationFrameId: number | null = null;
 
-// Initialize MediaPipe face mesh
-const initializeFaceMesh = async (): Promise<FaceMesh> => {
+// Initialize MediaPipe face landmarker
+const initializeFaceLandmarker = async (): Promise<FaceLandmarker> => {
   if (!faceLandmarker) {
-    faceLandmarker = new FaceMesh({
-      locateFile: (file) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-      }
-    });
-
-    await faceLandmarker.setOptions({
-      maxNumFaces: 1,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
-
-    // Set up the result callback
-    faceLandmarker.onResults((results: any) => {
-      processResults(results);
-    });
+    try {
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+      );
+      
+      faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+          delegate: "GPU"
+        },
+        runningMode: "VIDEO",
+        numFaces: 1
+      });
+    } catch (error) {
+      console.error('Failed to initialize MediaPipe FaceLandmarker:', error);
+      // Reset the faceLandmarker so we can try again
+      faceLandmarker = null;
+      throw error;
+    }
   }
   return faceLandmarker;
 };
 
-// Process face mesh results to extract iris positions
+// Process face landmarker results to extract iris positions
 const processResults = (results: any) => {
-  if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-    const landmarks = results.multiFaceLandmarks[0];
+  if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+    const landmarks = results.faceLandmarks[0];
     
-    // Iris landmarks (MediaPipe face mesh)
+    // Iris landmarks (MediaPipe face landmarker)
     // Left iris center: landmark 468
     // Right iris center: landmark 473
     const leftIris = landmarks[468];
@@ -70,7 +72,10 @@ const processResults = (results: any) => {
 // Render loop for continuous detection
 const renderLoop = (video: HTMLVideoElement) => {
   if (video.currentTime !== lastVideoTime) {
-    faceLandmarker?.send({ image: video });
+    const results = faceLandmarker?.detectForVideo(video, Date.now());
+    if (results) {
+      processResults(results);
+    }
     lastVideoTime = video.currentTime;
   }
 
@@ -91,7 +96,7 @@ export const startTracking = createAsyncThunk(
       window.addEventListener('eyePosition', handleEyePosition as EventListener);
       
       // Initialize MediaPipe face mesh
-      await initializeFaceMesh();
+      await initializeFaceLandmarker();
       
       // Start the render loop
       renderLoop(videoElement);
