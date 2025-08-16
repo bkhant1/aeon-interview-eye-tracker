@@ -63,19 +63,31 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
     }
   }, [currentPosition, isTracking, dispatch])
 
-  // Get live data for the last 10 seconds
+  // Get live data for the last 10 seconds with fixed window
   const getLiveData = () => {
     if (eyePositions.length === 0) return []
     
     const tenSecondsAgo = Date.now() - 10000 // 10 seconds ago
     const recentPositions = eyePositions.filter(pos => pos.timestamp >= tenSecondsAgo)
     
-    return recentPositions.map((pos, index) => ({
-      time: index,
-      x: pos.x,
-      y: pos.y,
-      timestamp: pos.timestamp
-    }))
+    // Create fixed 10-second window with evenly spaced data points
+    const windowSize = 10 // 10 seconds
+    const dataPoints = []
+    
+    for (let i = 0; i < windowSize; i++) {
+      const targetTime = tenSecondsAgo + (i * 1000) // Each second
+      const closestPosition = recentPositions.reduce((closest, pos) => {
+        return Math.abs(pos.timestamp - targetTime) < Math.abs(closest.timestamp - targetTime) ? pos : closest
+      }, recentPositions[0] || { x: 0, y: 0, timestamp: targetTime })
+      
+      dataPoints.push({
+        time: i,
+        x: closestPosition.x,
+        timestamp: targetTime
+      })
+    }
+    
+    return dataPoints
   }
 
   // Get latest position for live tracking
@@ -145,38 +157,36 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
       
       <div className="tracking-stats">
         <div className="stat">
-          <span className="stat-label">Current X:</span>
+          <span className="stat-label">Current X Position:</span>
           <span className="stat-value">{latestPos.x.toFixed(1)}</span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">Current Y:</span>
-          <span className="stat-value">{latestPos.y.toFixed(1)}</span>
         </div>
         <div className="stat">
           <span className="stat-label">Points Tracked:</span>
           <span className="stat-value">{eyePositions.length}</span>
         </div>
         <div className="stat">
-          <span className="stat-label">Live Data Points:</span>
-          <span className="stat-value">{liveData.length}</span>
+          <span className="stat-label">Window Size:</span>
+          <span className="stat-value">10s Fixed</span>
         </div>
       </div>
       
       <div className="live-chart-container">
-        <h3>Live Tracking (Last 10 Seconds)</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={liveData}>
+        <h3>Live X-Axis Tracking (Fixed 10s Window)</h3>
+        <ResponsiveContainer width="100%" height={350}>
+          <AreaChart data={liveData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
               dataKey="time" 
-              label={{ value: 'Time (Last 10s)', position: 'insideBottom', offset: -10 }}
+              label={{ value: 'Time (seconds)', position: 'insideBottom', offset: -15 }}
+              tick={{ fontSize: 12 }}
             />
             <YAxis 
-              label={{ value: 'Position', angle: -90, position: 'insideLeft' }}
+              label={{ value: 'X Position', angle: -90, position: 'insideLeft', offset: 0 }}
+              tick={{ fontSize: 12 }}
             />
             <Tooltip 
-              formatter={(value, name) => [value, name === 'x' ? 'X Position' : 'Y Position']}
-              labelFormatter={(label) => `Time: ${label}`}
+              formatter={(value, name) => [value, 'X Position']}
+              labelFormatter={(label) => `Time: ${label}s`}
             />
             <Area 
               type="monotone" 
@@ -185,14 +195,7 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
               fill="#667eea" 
               fillOpacity={0.3}
               name="X Position"
-            />
-            <Area 
-              type="monotone" 
-              dataKey="y" 
-              stroke="#f56565" 
-              fill="#f56565" 
-              fillOpacity={0.3}
-              name="Y Position"
+              strokeWidth={2}
             />
           </AreaChart>
         </ResponsiveContainer>
