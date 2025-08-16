@@ -71,7 +71,7 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
   return (
     <div className="step-container">
       <h2>Eye Tracking Active</h2>
-      <p>Your eye movements are being tracked in real-time. Use the webcam debugger in the bottom left to see your camera feed.</p>
+      <p>Your eye movements are being tracked in real-time using MediaPipe iris detection. Use the webcam debugger in the bottom left to see your camera feed.</p>
       
       <div className="tracking-controls">
         <div className="control-group">
@@ -103,11 +103,11 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
       <div className="tracking-stats">
         <div className="stat">
           <span className="stat-label">Current X Position:</span>
-          <span className="stat-value">{latestPos.x.toFixed(1)}</span>
+          <span className="stat-value">{latestPos.x.toFixed(3)}</span>
         </div>
         <div className="stat">
           <span className="stat-label">Current Y Position:</span>
-          <span className="stat-value">{latestPos.y.toFixed(1)}</span>
+          <span className="stat-value">{latestPos.y.toFixed(3)}</span>
         </div>
         <div className="stat">
           <span className="stat-label">Points Tracked:</span>

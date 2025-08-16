@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { VideoStreamState } from '../types'
+import { startTracking, stopTracking } from './eyeTrackingSlice'
 
 const initialState: VideoStreamState = {
   isActive: false,
@@ -10,7 +11,7 @@ const initialState: VideoStreamState = {
 
 export const startVideoStream = createAsyncThunk(
   'videoStream/start',
-  async (_, { rejectWithValue }) => {
+  async (_, { rejectWithValue, dispatch }) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -22,6 +23,25 @@ export const startVideoStream = createAsyncThunk(
         audio: false
       })
       
+      // Create a video element for eye tracking
+      const videoElement = document.createElement('video');
+      videoElement.srcObject = stream;
+      videoElement.autoplay = true;
+      videoElement.playsInline = true;
+      videoElement.muted = true;
+      videoElement.style.display = 'none';
+      document.body.appendChild(videoElement);
+      
+      // Wait for video to be ready and ensure it's playing
+      await new Promise((resolve) => {
+        videoElement.onloadedmetadata = () => {
+          videoElement.play().then(resolve).catch(resolve);
+        };
+      });
+      
+      // Start eye tracking immediately
+      await dispatch(startTracking(videoElement)).unwrap();
+      
       return stream
     } catch (error) {
       return rejectWithValue('Failed to access camera. Please make sure you have granted camera permissions.')
@@ -31,12 +51,21 @@ export const startVideoStream = createAsyncThunk(
 
 export const stopVideoStream = createAsyncThunk(
   'videoStream/stop',
-  async (_, { getState }) => {
+  async (_, { getState, dispatch }) => {
     const state = getState() as any
     const stream = state.videoStream.stream
     
     if (stream) {
       stream.getTracks().forEach((track: MediaStreamTrack) => track.stop())
+    }
+    
+    // Stop eye tracking
+    await dispatch(stopTracking()).unwrap();
+    
+    // Remove the hidden video element
+    const videoElement = document.querySelector('video[style*="display: none"]');
+    if (videoElement) {
+      document.body.removeChild(videoElement);
     }
     
     return null
