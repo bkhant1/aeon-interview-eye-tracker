@@ -2,8 +2,8 @@ services:
   - type: web
     name: eye-tracking-backend
     env: python
-    buildCommand: cd backend && uv sync
-    startCommand: cd backend && uv run python main.py
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && python main.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.0
@@ -24,5 +24,4 @@ services:
 databases:
   - name: eye-tracking-db
     databaseName: eye_tracking
-    user: eye_tracking_user
-    plan: free 
+    user: eye_tracking_user 
