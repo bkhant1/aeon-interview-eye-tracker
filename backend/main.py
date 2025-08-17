@@ -94,7 +94,7 @@ async def receive_eye_tracking_data(data: EyeTrackingData, db: AsyncSession = De
         service = EyeTrackingService(db)
         
         # Convert Pydantic models to dict for storage
-        positions_dict = [position.dict() for position in data.positions]
+        positions_dict = [position.model_dump() for position in data.positions]
         
         # Store the data (recording_number = None for general tracking data)
         stored_count = await service.store_recording_data(data.session_id, None, positions_dict)
@@ -128,7 +128,7 @@ async def receive_recording_data(session_id: str, data: RecordingData, db: Async
         service = EyeTrackingService(db)
         
         # Convert Pydantic models to dict for storage
-        positions_dict = [position.dict() for position in data.positions]
+        positions_dict = [position.model_dump() for position in data.positions]
         
         # Store the recording data
         stored_count = await service.store_recording_data(session_id, data.recording_number, positions_dict)
@@ -158,7 +158,7 @@ async def receive_calibration_data(data: CalibrationData, db: AsyncSession = Dep
         service = EyeTrackingService(db)
         
         # Convert Pydantic models to dict for storage
-        calibration_dict = [point.dict() for point in data.calibration_points]
+        calibration_dict = [point.model_dump() for point in data.calibration_points]
         
         # Store calibration data (recording_number = 0 for calibration)
         stored_count = await service.store_calibration_data(data.session_id, calibration_dict)

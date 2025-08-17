@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import Column, String, Integer, Float, DateTime, Text, Index
+from sqlalchemy import Column, String, BigInteger, Float, DateTime, Text, Index
 from datetime import datetime
 import os
 
@@ -17,15 +17,12 @@ Base = declarative_base()
 class EyeTrackingData(Base):
     __tablename__ = "eye_tracking_data"
     
-    # Primary key components
     session_id = Column(String(255), primary_key=True)
-    timestamp = Column(Integer, primary_key=True)  # Unix timestamp
-    eye_side = Column(String(10), primary_key=True)  # 'left' or 'right'
+    timestamp = Column(BigInteger, primary_key=True)
+    eye_side = Column(String(10), primary_key=True)
     
-    # Recording metadata
-    recording_number = Column(Integer, nullable=True)
+    recording_number = Column(BigInteger, nullable=True)
     
-    # Iris center coordinates
     iris_x = Column(Float, nullable=True)
     iris_y = Column(Float, nullable=True)
     iris_z = Column(Float, nullable=True)
