@@ -7,6 +7,15 @@ interface LiveTrackingProps {
   onStopTracking: () => void
 }
 
+// Helper function to generate ticks for the axes
+const generateTicks = (start: number, end: number, step: number): number[] => {
+  const ticks = [];
+  for (let i = start; i <= end; i += step) {
+    ticks.push(i);
+  }
+  return ticks;
+};
+
 export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
   const dispatch = useAppDispatch()
 
@@ -25,35 +34,26 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
     dispatch(clearRecordingBuffer())
   }
 
-  // Get live data for the last 10 seconds with fixed window
   const getLiveData = () => {
     if (eyePositions.length === 0 || calibrationPoints.length === 0) return []
 
-    const tenSecondsAgo = Date.now() - 10000 // 10 seconds ago
+    const now = Date.now()
+    const tenSecondsAgo = now - 10000
+
+    // 1. Filter for all data points within the last 10 seconds
     const recentPositions = eyePositions.filter(pos => pos.timestamp >= tenSecondsAgo)
 
-    // Create fixed 10-second window with evenly spaced data points
-    const windowSize = 10 // 10 seconds
-    const dataPoints = []
-
-    for (let i = 0; i < windowSize; i++) {
-      const targetTime = tenSecondsAgo + (i * 1000) // Each second
-      const closestPosition = recentPositions.reduce((closest, pos) => {
-        return Math.abs(pos.timestamp - targetTime) < Math.abs(closest.timestamp - targetTime) ? pos : closest
-      }, recentPositions[0])
-
-      const relativePosition = calculateEyesNormalizedRelativePosition(closestPosition, calibrationPoints)
-      dataPoints.push({
-        time: i,
+    // 2. Map each point to the fixed [-10, 0] time domain
+    return recentPositions.map(pos => {
+      const relativePosition = calculateEyesNormalizedRelativePosition(pos, calibrationPoints)
+      return {
+        // Calculate time relative to now (e.g., a point from 2s ago will be -2)
+        time: (pos.timestamp - now) / 1000,
         x: relativePosition !== null ? relativePosition : 0,
-        timestamp: targetTime
-      })
-    }
-
-    return dataPoints
+      }
+    })
   }
 
-  // Get latest position for live tracking
   const getLatestPosition = () => {
     const latestPosition = eyePositions[eyePositions.length - 1]
     if (!latestPosition) {
@@ -72,6 +72,10 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
 
   const latestPos = getLatestPosition()
   const liveData = getLiveData()
+
+  // Define the fixed ticks for our axes
+  const xTicks = generateTicks(-10, 0, 1); // -10, -9, -8, ..., 0
+  const yTicks = generateTicks(-2, 2, 0.5); // -2, -1.5, -1, ..., 2
 
   return (
     <div className="step-container">
@@ -134,19 +138,29 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
           <AreaChart data={liveData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
+              type="number" // Important for a numerical domain
               dataKey="time"
-              label={{ value: 'Time (seconds)', position: 'insideBottom', offset: -15 }}
+              label={{ value: 'Time (seconds ago)', position: 'insideBottom', offset: -15 }}
               tick={{ fontSize: 12 }}
+              // --- KEY CHANGES FOR X-AXIS ---
+              domain={[-10, 0]}
+              ticks={xTicks}
+              allowDataOverflow={true}
             />
             <YAxis
               label={{ value: 'X Position', angle: -90, position: 'insideLeft', offset: 0 }}
               tick={{ fontSize: 12 }}
+              // --- KEY CHANGES FOR Y-AXIS ---
+              domain={[-2, 2]}
+              ticks={yTicks}
+              allowDataOverflow={true}
             />
             <Tooltip
               formatter={(value) => [value, 'X Position']}
-              labelFormatter={(label) => `Time: ${label}s`}
+              labelFormatter={(label) => `Time: ${label.toFixed(2)}s ago`}
             />
             <Area
+              isAnimationActive={false} // Improves performance for live data
               type="monotone"
               dataKey="x"
               stroke="#667eea"

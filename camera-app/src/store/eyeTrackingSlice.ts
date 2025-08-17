@@ -4,8 +4,8 @@ import type { EyePosition } from '../types'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 
 // Constants
-const POSITION_BUFFER_SIZE = 30;
-const RECORDING_BUFFER_SIZE = 1000;
+const POSITION_BUFFER_SIZE = 3500;
+const RECORDING_BUFFER_SIZE = 10000;
 
 // MediaPipe face landmarker instance
 let faceLandmarker: FaceLandmarker | null = null;
