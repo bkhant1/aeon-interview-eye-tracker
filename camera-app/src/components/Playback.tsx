@@ -167,7 +167,7 @@ export default function Playback({ onStartNewSession, onExit }: PlaybackProps) {
               domain={[-2, 2]}
             />
             <Tooltip 
-              formatter={(value, name) => [value, 'X Position']}
+              formatter={(value, _name) => [value, 'X Position']}
               labelFormatter={(label) => `Data Point: ${label}`}
             />
             <Area 
