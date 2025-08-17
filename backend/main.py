@@ -184,25 +184,6 @@ async def receive_calibration_data(data: CalibrationData, db: AsyncSession = Dep
         print(f"Error processing calibration data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@app.get("/api/eye-tracking/{session_id}")
-async def get_session_data(session_id: str, db: AsyncSession = Depends(get_db)):
-    """
-    Get all data for a specific session
-    """
-    try:
-        service = EyeTrackingService(db)
-        data = await service.get_session_data(session_id)
-        summary = await service.get_session_summary(session_id)
-        
-        return {
-            "session_id": session_id,
-            "summary": summary,
-            "data": data
-        }
-    except Exception as e:
-        print(f"Error retrieving session data: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
 @app.get("/api/recordings/{session_id}")
 async def get_session_recordings(session_id: str, db: AsyncSession = Depends(get_db)):
     """
@@ -250,23 +231,41 @@ async def get_session_calibration(session_id: str, db: AsyncSession = Depends(ge
         print(f"Error retrieving calibration data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@app.delete("/api/sessions/{session_id}")
-async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
+@app.get("/api/sessions")
+async def get_all_sessions(db: AsyncSession = Depends(get_db)):
     """
-    Delete all data for a specific session
+    Get all sessions with their recordings
     """
     try:
         service = EyeTrackingService(db)
-        deleted_count = await service.delete_session_data(session_id)
+        sessions = await service.get_all_sessions()
         
         return {
             "success": True,
-            "message": f"Deleted {deleted_count} data points for session {session_id}",
-            "session_id": session_id,
-            "deleted_count": deleted_count
+            "sessions": sessions
         }
     except Exception as e:
-        print(f"Error deleting session: {str(e)}")
+        print(f"Error retrieving sessions: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.get("/api/sessions/{session_id}/recordings/{recording_number}")
+async def get_recording_data(session_id: str, recording_number: int, db: AsyncSession = Depends(get_db)):
+    """
+    Get data for a specific recording
+    """
+    try:
+        service = EyeTrackingService(db)
+        data = await service.get_recording_data(session_id, recording_number)
+        
+        return {
+            "success": True,
+            "session_id": session_id,
+            "recording_number": recording_number,
+            "data": data,
+            "data_points": len(data)
+        }
+    except Exception as e:
+        print(f"Error retrieving recording data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 if __name__ == "__main__":

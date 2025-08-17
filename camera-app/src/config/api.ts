@@ -8,4 +8,6 @@ export const API_ENDPOINTS = {
   sessionData: (sessionId: string) => `${API_BASE_URL}/api/eye-tracking/${sessionId}`,
   calibrationData: (sessionId: string) => `${API_BASE_URL}/api/calibration/${sessionId}`,
   deleteSession: (sessionId: string) => `${API_BASE_URL}/api/sessions/${sessionId}`,
+  allSessions: `${API_BASE_URL}/api/sessions`,
+  recordingData: (sessionId: string, recordingNumber: number) => `${API_BASE_URL}/api/sessions/${sessionId}/recordings/${recordingNumber}`,
 } 

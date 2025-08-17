@@ -15,6 +15,43 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+/* Tab Navigation Styles */
+.tab-navigation {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+
+.tab-btn.active {
+  background: rgba(255, 255, 255, 0.95);
+  color: #667eea;
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
 .App-header h1 {
   margin: 0 0 1rem 0;
   color: white;
@@ -1014,5 +1051,438 @@
   .calibration-reload-btn {
     padding: 0.6rem 1.2rem;
     font-size: 0.9rem;
+  }
+}
+
+/* Record Tab Styles */
+.record-tab {
+  width: 100%;
+}
+
+.record-header {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.record-header h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #2d3748;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.record-content {
+  width: 100%;
+}
+
+.tracking-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+/* Playback Tab Styles */
+.playback-tab {
+  width: 100%;
+}
+
+.playback-header {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.playback-header h2 {
+  margin-top: 0;
+  margin-bottom: 0;
+  color: #2d3748;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.playback-header-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.back-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.2);
+  color: #667eea;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.back-btn:hover {
+  background: rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
+}
+
+.selection-view {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.playback-full-view {
+  padding: 2rem;
+}
+
+.playback-content {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
+  height: calc(100vh - 300px);
+  min-height: 500px;
+}
+
+/* Recordings List Styles */
+.recordings-list {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow-y: auto;
+}
+
+.loading, .error {
+  text-align: center;
+  padding: 2rem;
+  color: #718096;
+}
+
+.error {
+  color: #e53e3e;
+}
+
+.sessions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.session-group {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.session-header {
+  background: #f7fafc;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.session-header:hover {
+  background: #edf2f7;
+}
+
+.session-header.selected {
+  background: #ebf8ff;
+  border-color: #667eea;
+}
+
+.session-title {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 1.1rem;
+}
+
+.session-count {
+  background: #667eea;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.session-group .recordings-list {
+  background: white;
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+  padding: 1rem;
+  margin: 0;
+}
+
+.recordings-list h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #2d3748;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.no-recordings {
+  text-align: center;
+  color: #718096;
+  padding: 2rem;
+}
+
+.no-recordings p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+}
+
+.recordings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.recording-item {
+  background: #f7fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.recording-item:hover {
+  border-color: #667eea;
+  background: #edf2f7;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+}
+
+.recording-item.selected {
+  border-color: #667eea;
+  background: #ebf8ff;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.recording-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.recording-title {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 1.1rem;
+}
+
+.recording-number {
+  background: #667eea;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.recording-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail .label {
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+.detail .value {
+  color: #2d3748;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* Playback Panel Styles */
+.playback-panel {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow-y: auto;
+}
+
+.playback-info {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.playback-info h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #2d3748;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.playback-info p {
+  color: #2d3748;
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.no-selection {
+  text-align: center;
+  color: #718096;
+  padding: 3rem 1rem;
+}
+
+.no-selection h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #2d3748;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.no-selection p {
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Responsive design for tabs */
+@media (max-width: 1024px) {
+  .playback-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    height: auto;
+  }
+  
+  .recordings-list {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .tab-navigation {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .tab-btn {
+    width: 200px;
+  }
+  
+  .record-header,
+  .playback-header {
+    padding: 1rem;
+  }
+  
+  .record-header h2 {
+    font-size: 1.5rem;
+  }
+  
+  .playback-header h2 {
+    font-size: 1rem;
+  }
+  
+  .playback-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .back-btn {
+    align-self: flex-start;
+  }
+  
+  .selection-view {
+    padding: 1rem;
+  }
+  
+  .playback-full-view {
+    padding: 1rem;
+  }
+  
+  .recordings-list,
+  .playback-panel {
+    padding: 1rem;
+  }
+  
+  .recordings-list h3 {
+    font-size: 1.2rem;
+  }
+  
+  .playback-info h3 {
+    font-size: 1.1rem;
+  }
+  
+  .recording-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .recording-title {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .tab-btn {
+    width: 180px;
+    padding: 0.6rem 1.5rem;
+    font-size: 0.9rem;
+  }
+  
+  .record-header h2,
+  .playback-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .recordings-list,
+  .playback-panel {
+    padding: 0.75rem;
+  }
+  
+  .recording-item {
+    padding: 0.75rem;
+  }
+  
+  .recording-title {
+    font-size: 0.9rem;
+  }
+  
+  .detail .label,
+  .detail .value {
+    font-size: 0.8rem;
   }
 }

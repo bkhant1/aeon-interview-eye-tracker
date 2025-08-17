@@ -6,7 +6,13 @@ from datetime import datetime
 import os
 
 # Database URL - can be overridden by environment variable
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:password@localhost/eye_tracking")
+raw_database_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:password@localhost/eye_tracking")
+
+# Ensure we're using the async driver
+if raw_database_url.startswith("postgresql://"):
+    DATABASE_URL = raw_database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+else:
+    DATABASE_URL = raw_database_url
 
 # Create async engine
 engine = create_async_engine(DATABASE_URL, echo=True)

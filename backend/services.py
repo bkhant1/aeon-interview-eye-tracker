@@ -354,8 +354,7 @@ class EyeTrackingService:
         
         return {
             'session_id': session_id,
-            'total_recordings': len([r for r in recording_numbers if r > 0]),
-            'has_calibration': 0 in recording_numbers,
+            'total_recordings': len(recording_numbers),
             'total_data_points': total_records,
             'recording_numbers': sorted(recording_numbers)
         }
@@ -367,4 +366,66 @@ class EyeTrackingService:
         query = delete(EyeTrackingData).where(EyeTrackingData.session_id == session_id)
         result = await self.db.execute(query)
         await self.db.commit()
-        return result.rowcount 
+        return result.rowcount
+    
+    async def get_all_sessions(self) -> List[dict]:
+        """
+        Get all sessions with their recordings and summary information
+        """
+        # Get all unique session IDs
+        query = select(EyeTrackingData.session_id).distinct()
+        result = await self.db.execute(query)
+        session_ids = [row[0] for row in result.fetchall()]
+        
+        sessions = []
+        for session_id in session_ids:
+            # Get summary for this session
+            summary = await self.get_session_summary(session_id)
+            
+            # Get recordings for this session
+            recordings = []
+            for recording_number in summary['recording_numbers']:
+                # Get data count for this recording
+                query = select(EyeTrackingData).where(
+                    EyeTrackingData.session_id == session_id,
+                    EyeTrackingData.recording_number == recording_number
+                )
+                result = await self.db.execute(query)
+                data_count = len(result.scalars().all())
+                
+                # Get the first timestamp for this recording to calculate duration
+                query = select(EyeTrackingData.timestamp).where(
+                    EyeTrackingData.session_id == session_id,
+                    EyeTrackingData.recording_number == recording_number
+                ).order_by(EyeTrackingData.timestamp.asc()).limit(1)
+                result = await self.db.execute(query)
+                first_timestamp = result.scalar()
+                
+                # Get the last timestamp for this recording
+                query = select(EyeTrackingData.timestamp).where(
+                    EyeTrackingData.session_id == session_id,
+                    EyeTrackingData.recording_number == recording_number
+                ).order_by(EyeTrackingData.timestamp.desc()).limit(1)
+                result = await self.db.execute(query)
+                last_timestamp = result.scalar()
+                
+                # Calculate duration in seconds
+                duration = 0
+                if first_timestamp and last_timestamp:
+                    duration = (last_timestamp - first_timestamp) // 1000  # Convert to seconds
+                
+                recordings.append({
+                    'recording_number': recording_number,
+                    'data_points': data_count,
+                    'duration': duration,
+                    'timestamp': first_timestamp,
+                    'session_id': session_id
+                })
+            
+            sessions.append({
+                'session_id': session_id,
+                'summary': summary,
+                'recordings': recordings
+            })
+        
+        return sessions 

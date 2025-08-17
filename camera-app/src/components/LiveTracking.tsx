@@ -241,7 +241,7 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
       </div>
 
       <button onClick={handleStopTracking} className="secondary-btn">
-        Stop Tracking & View Playback
+        Stop Tracking Session
       </button>
     </div>
   )

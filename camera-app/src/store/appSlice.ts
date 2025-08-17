@@ -47,7 +47,7 @@ export const sendRecordingData = createAsyncThunk(
     const { sessionId, recordingNumber } = state.app
     
     try {
-      const response = await fetch(API_ENDPOINTS.eyeTracking, {
+      const response = await fetch(`${API_ENDPOINTS.eyeTracking}/${sessionId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,13 +77,13 @@ export const sendRecordingData = createAsyncThunk(
 const appSlice = createSlice({
   name: 'app',
   initialState: {
-    currentStep: 'permission' as 'permission' | 'calibration' | 'tracking' | 'playback',
+    currentStep: 'permission' as 'permission' | 'calibration' | 'tracking' | 'tracking-complete',
     calibrationPoints: [] as CalibrationPosition[],
     sessionId: generateSessionId(),
     recordingNumber: 1,
   },
   reducers: {
-    setCurrentStep: (state, action: PayloadAction<'permission' | 'calibration' | 'tracking' | 'playback'>) => {
+    setCurrentStep: (state, action: PayloadAction<'permission' | 'calibration' | 'tracking' | 'tracking-complete'>) => {
       state.currentStep = action.payload
     },
     addCalibrationPoint: (state, action: PayloadAction<CalibrationPosition>) => {

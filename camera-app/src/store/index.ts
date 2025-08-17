@@ -2,12 +2,14 @@ import { configureStore } from '@reduxjs/toolkit'
 import videoStreamReducer from './videoStreamSlice'
 import eyeTrackingReducer from './eyeTrackingSlice'
 import appReducer from './appSlice'
+import playbackReducer from './playbackSlice'
 
 export const store = configureStore({
   reducer: {
     videoStream: videoStreamReducer,
     eyeTracking: eyeTrackingReducer,
     app: appReducer,
+    playback: playbackReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
