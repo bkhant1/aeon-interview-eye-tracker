@@ -1,8 +1,19 @@
-export interface EyePosition {
+export interface EyeLandmark {
   x: number;
   y: number;
+  z: number;
+}
+
+export interface EyeData {
+  corners: EyeLandmark[];
+  center: EyeLandmark;
+}
+
+export interface EyePosition {
   timestamp: number;
   confidence?: number;
+  leftEye?: EyeData;
+  rightEye?: EyeData;
 }
 
 export interface VideoStreamState {
@@ -22,7 +33,7 @@ export interface EyeTrackingState {
 
 export interface AppState {
   currentStep: 'permission' | 'calibration' | 'tracking' | 'playback';
-  calibrationPoints: { x: number; y: number }[];
+  calibrationPoints: EyePosition[];
   sessionId: string;
 }
 

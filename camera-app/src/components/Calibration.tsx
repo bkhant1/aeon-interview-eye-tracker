@@ -8,8 +8,9 @@ interface CalibrationProps {
 
 export default function Calibration({ onCalibrationComplete }: CalibrationProps) {
   const dispatch = useAppDispatch()
-  const currentEyePosition = useAppSelector(state => state.eyeTracking.currentPosition)
+  const currentEyeData = useAppSelector(state => state.eyeTracking.currentPosition)
   const [currentCalibrationPoint, setCurrentCalibrationPoint] = useState<number>(0)
+  const [showCameraError, setShowCameraError] = useState<boolean>(false)
 
   const calibrationSteps = [
     { 
@@ -27,13 +28,13 @@ export default function Calibration({ onCalibrationComplete }: CalibrationProps)
   ];
 
   const captureCalibrationPoint = () => {
-    // Use actual eye tracking data if available, otherwise fall back to mock data
-    const position = currentEyePosition 
-      ? { x: currentEyePosition.x, y: currentEyePosition.y }
-      : { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 }
-    
-    // Add to Redux state
-    dispatch(addCalibrationPoint(position))
+    // Check if we have valid eye data
+    if (!currentEyeData) {
+      setShowCameraError(true)
+      return
+    }
+    console.log(currentEyeData)
+    dispatch(addCalibrationPoint(currentEyeData))
 
     if (currentCalibrationPoint < calibrationSteps.length - 1) {
       setCurrentCalibrationPoint(prev => prev + 1)
@@ -55,9 +56,35 @@ export default function Calibration({ onCalibrationComplete }: CalibrationProps)
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [currentCalibrationPoint])
+  }, [currentCalibrationPoint, currentEyeData])
 
   const currentStep = calibrationSteps[currentCalibrationPoint]
+
+  // Show camera error message if no eye data is available
+  if (showCameraError) {
+    return (
+      <div className="calibration-fullscreen">
+        <div className="calibration-header-simple">
+          <h2>Camera Issue Detected</h2>
+          <p className="calibration-error">
+            No eye tracking data is being received. Please:
+          </p>
+          <ul className="calibration-error-list">
+            <li>Check that your camera is working properly</li>
+            <li>Make sure your face is clearly visible in the camera</li>
+            <li>Ensure good lighting conditions</li>
+            <li>Try reloading the page</li>
+          </ul>
+          <button 
+            className="calibration-reload-btn"
+            onClick={() => window.location.reload()}
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="calibration-fullscreen">

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
+import type { EyePosition } from '../types'
 
 const generateSessionId = () => {
   return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -42,14 +43,14 @@ const appSlice = createSlice({
   name: 'app',
   initialState: {
     currentStep: 'permission' as 'permission' | 'calibration' | 'tracking' | 'playback',
-    calibrationPoints: [] as { x: number; y: number }[],
+    calibrationPoints: [] as EyePosition[],
     sessionId: generateSessionId(),
   },
   reducers: {
     setCurrentStep: (state, action: PayloadAction<'permission' | 'calibration' | 'tracking' | 'playback'>) => {
       state.currentStep = action.payload
     },
-    addCalibrationPoint: (state, action: PayloadAction<{ x: number; y: number }>) => {
+    addCalibrationPoint: (state, action: PayloadAction<EyePosition>) => {
       state.calibrationPoints.push(action.payload)
     },
     clearCalibrationPoints: (state) => {

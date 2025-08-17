@@ -38,34 +38,58 @@ const initializeFaceLandmarker = async (): Promise<FaceLandmarker> => {
   return faceLandmarker;
 };
 
-// Process face landmarker results to extract iris positions
+// Process face landmarker results to extract eye corners and iris centers
 const processResults = (results: any) => {
   if (results.faceLandmarks && results.faceLandmarks.length > 0) {
     const landmarks = results.faceLandmarks[0];
     
-    // Iris landmarks (MediaPipe face landmarker)
-    // Left iris center: landmark 468
-    // Right iris center: landmark 473
-    const leftIris = landmarks[468];
-    const rightIris = landmarks[473];
+    // Eye landmark indices (MediaPipe face landmarker)
+    const eyeLandmarks = {
+      // Left eye
+      leftEye: {
+        corner: [33, 133], // Eye corners
+        center: 468 // Iris center
+      },
+      // Right eye
+      rightEye: {
+        corner: [362, 263], // Eye corners
+        center: 473 // Iris center
+      }
+    };
+    
+    // Extract iris centers
+    const leftIris = landmarks[eyeLandmarks.leftEye.center];
+    const rightIris = landmarks[eyeLandmarks.rightEye.center];
     
     if (leftIris && rightIris) {
-      // Calculate average position of both irises
-      const avgX = (leftIris.x + rightIris.x) / 2;
-      const avgY = (leftIris.y + rightIris.y) / 2;
+      // Extract eye corners and centers (raw positions)
+      const leftEyeCorners = eyeLandmarks.leftEye.corner.map(idx => landmarks[idx]);
+      const rightEyeCorners = eyeLandmarks.rightEye.corner.map(idx => landmarks[idx]);
       
-      const eyePosition: EyePosition = {
-        x: avgX,
-        y: avgY,
-        timestamp: Date.now(),
-        confidence: (leftIris.z + rightIris.z) / 2 // Use z-coordinate as confidence
+      const leftEyeData = {
+        corners: leftEyeCorners,
+        center: leftIris
       };
       
+      const rightEyeData = {
+        corners: rightEyeCorners,
+        center: rightIris
+      };
+      
+      const eyePosition: EyePosition = {
+        timestamp: Date.now(),
+        leftEye: leftEyeData,
+        rightEye: rightEyeData
+      };
       // Dispatch custom event instead of using global dispatch
       window.dispatchEvent(new CustomEvent('eyePosition', { 
         detail: eyePosition 
       }));
     }
+  } else {
+    window.dispatchEvent(new CustomEvent('eyePosition', { 
+      detail: null 
+    })); 
   }
 };
 
@@ -141,7 +165,11 @@ const eyeTrackingSlice = createSlice({
     showWebcamDebug: true, // New state for webcam debug visibility
   },
   reducers: {
-    addPosition: (state, action: PayloadAction<EyePosition>) => {
+    addPosition: (state, action: PayloadAction<EyePosition | null>) => {
+      if (!action.payload) {
+        state.currentPosition = null
+        return
+      }
       state.positions.push(action.payload)
       state.currentPosition = action.payload
       
