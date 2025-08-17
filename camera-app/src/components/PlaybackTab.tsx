@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useAppSelector, useAppDispatch } from '../store/hooks'
 import { fetchAllSessions, fetchRecordingData, setSelectedSession, setSelectedRecording } from '../store/playbackSlice'
-import { calculateEyesNormalizedRelativePosition } from '../utils/positionCalculations'
+import { calculateEyesNormalizedRelativePosition, averageEyeSpeed } from '../utils/positionCalculations'
 
 export default function PlaybackTab() {
   const dispatch = useAppDispatch()
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [playbackSpeed, setPlaybackSpeed] = useState(1)
-  const [currentTimeIndex, setCurrentTimeIndex] = useState(0)
+  const [rangeStart, setRangeStart] = useState(0)
+  const [rangeEnd, setRangeEnd] = useState(100)
+  const [selectedEye, setSelectedEye] = useState<'left' | 'right'>('left')
+  const [useNormalization, setUseNormalization] = useState(true)
 
   const { sessions, selectedSession, selectedRecording, recordingData, isLoading, error } = useAppSelector(state => state.playback)
   const calibrationPoints = useAppSelector(state => state.app.calibrationPoints)
@@ -18,23 +19,15 @@ export default function PlaybackTab() {
     dispatch(fetchAllSessions())
   }, [dispatch])
 
-  // Playback controls
-  const togglePlayback = () => {
-    setIsPlaying(!isPlaying)
+  // Range controls
+  const handleRangeStartChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newStart = parseInt(event.target.value)
+    setRangeStart(Math.min(newStart, rangeEnd - 1))
   }
 
-  const resetPlayback = () => {
-    setCurrentTimeIndex(0)
-    setIsPlaying(false)
-  }
-
-  const handleTimelineChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newIndex = parseInt(event.target.value)
-    setCurrentTimeIndex(newIndex)
-  }
-
-  const handleSpeedChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setPlaybackSpeed(parseFloat(event.target.value))
+  const handleRangeEndChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newEnd = parseInt(event.target.value)
+    setRangeEnd(Math.max(newEnd, rangeStart + 1))
   }
 
   const handleSessionSelect = (session: any) => {
@@ -43,70 +36,69 @@ export default function PlaybackTab() {
 
   const handleRecordingSelect = async (recording: any) => {
     dispatch(setSelectedRecording(recording))
-    setCurrentTimeIndex(0)
-    setIsPlaying(false)
     
     // Fetch the recording data
     await dispatch(fetchRecordingData({
       sessionId: recording.session_id,
-      recordingNumber: recording.recording_number
+      recordingNumber: recording.recording_number,
+      eye: selectedEye,
+      noiseReduction: false
     }))
   }
 
   const handleBackToSelection = () => {
     dispatch(setSelectedRecording(null))
-    setCurrentTimeIndex(0)
-    setIsPlaying(false)
   }
 
-  // Playback effect
-  useEffect(() => {
-    if (isPlaying && recordingData.length > 0) {
-      const interval = setInterval(() => {
-        setCurrentTimeIndex(prev => {
-          const next = prev + playbackSpeed
-          if (next >= recordingData.length) {
-            setIsPlaying(false)
-            return recordingData.length - 1
-          }
-          return next
-        })
-      }, 100) // Update every 100ms
-
-      return () => clearInterval(interval)
+  const handleEyeChange = async (eye: 'left' | 'right') => {
+    setSelectedEye(eye)
+    if (selectedRecording) {
+      await dispatch(fetchRecordingData({
+        sessionId: selectedRecording.session_id,
+        recordingNumber: selectedRecording.recording_number,
+        eye: eye,
+        noiseReduction: false
+      }))
     }
-  }, [isPlaying, playbackSpeed, recordingData.length])
+  }
 
-  // Get current playback data
-  const getCurrentPlaybackData = () => {
-    if (recordingData.length === 0 || calibrationPoints.length === 0) return []
+  const handleNormalizationChange = async (normalized: boolean) => {
+    setUseNormalization(normalized)
+    if (selectedRecording) {
+      // Note: This would require backend support for non-normalized data
+      // For now, we'll just update the state
+    }
+  }
+
+
+
+  // Get data for the selected range
+  const getRangeData = () => {
+    if (recordingData.length === 0) return []
     
-    const endIndex = Math.min(currentTimeIndex + 1, recordingData.length)
-    return recordingData.slice(0, endIndex).map((pos, index) => {
-      const relativePosition = calculateEyesNormalizedRelativePosition(pos, calibrationPoints)
-      return {
-        time: index,
-        x: relativePosition !== null ? relativePosition : 0,
-        timestamp: pos.timestamp
-      }
-    })
+    const startIndex = Math.floor((rangeStart / 100) * recordingData.length)
+    const endIndex = Math.floor((rangeEnd / 100) * recordingData.length)
+    
+    return recordingData.slice(startIndex, endIndex).map((pos, index) => ({
+      time: (pos.timestamp - recordingData[0].timestamp) / 1000, // Convert to seconds from epoch
+      x: pos.x,
+      timestamp: pos.timestamp
+    }))
   }
 
-  // Get current position for stats
-  const getCurrentPosition = () => {
-    if (recordingData.length === 0 || currentTimeIndex >= recordingData.length) {
-      return { x: 0, y: 0 }
-    }
-    const currentPos = recordingData[currentTimeIndex]
-    const relativePosition = calculateEyesNormalizedRelativePosition(currentPos, calibrationPoints)
-    return {
-      x: relativePosition !== null ? relativePosition : 0,
-      y: 0 // We're only tracking X position for now
-    }
-  }
+  const rangeData = getRangeData()
 
-  const currentPos = getCurrentPosition()
-  const playbackData = getCurrentPlaybackData()
+  const currentRangeDataPoints = rangeData.length
+  const currentRangeDuration = currentRangeDataPoints > 1
+    ? (rangeData[currentRangeDataPoints - 1].time - rangeData[0].time)
+    : 0
+  const currentRangeAverageSpeed = averageEyeSpeed(rangeData)
+
+  const formatRangeDuration = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = Math.floor(seconds % 60)
+    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`
+  }
 
   const formatTimestamp = (timestamp: number) => {
     return new Date(timestamp).toLocaleString()
@@ -138,26 +130,59 @@ export default function PlaybackTab() {
             </div>
           ) : (
             <>
-              <div className="playback-info">
-                <p>Duration: {formatDuration(selectedRecording.duration)} | Data Points: {selectedRecording.data_points.toLocaleString()}</p>
+              <div className="playback-options">
+                <div className="range-stats">
+                  <p>Range Duration: {formatRangeDuration(currentRangeDuration)} | Range Data Points: {currentRangeDataPoints.toLocaleString()} | Avg Speed: {currentRangeAverageSpeed.toFixed(3)} units/s</p>
+                </div>
+                <div className="option-group">
+                  <label htmlFor="eye-select">Eye:</label>
+                  <select 
+                    id="eye-select"
+                    value={selectedEye} 
+                    onChange={(e) => handleEyeChange(e.target.value as 'left' | 'right')}
+                    className="option-select"
+                  >
+                    <option value="left">Left Eye</option>
+                    <option value="right">Right Eye</option>
+                  </select>
+                </div>
+                
+                <div className="option-group">
+                  <label htmlFor="normalization-toggle">Normalization:</label>
+                  <input
+                    type="checkbox"
+                    id="normalization-toggle"
+                    checked={useNormalization}
+                    onChange={(e) => handleNormalizationChange(e.target.checked)}
+                    className="option-checkbox"
+                  />
+                </div>
               </div>
               
               <div className="chart-container">
                 <h3>Eye Tracking Playback (X-Axis Position)</h3>
                 <ResponsiveContainer width="100%" height={400}>
-                  <AreaChart data={playbackData}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                  <AreaChart data={rangeData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f7fafc" />
                     <XAxis 
                       dataKey="time" 
-                      label={{ value: 'Time (data points)', position: 'insideBottom', offset: -10 }}
+                      label={{ value: 'Time (seconds)', position: 'insideBottom', offset: -10 }}
+                      tickFormatter={(value) => value.toFixed(2)}
+                      tick={{ fontSize: 12, fill: '#4a5568' }}
+                      axisLine={{ stroke: '#e2e8f0' }}
+                      tickLine={{ stroke: '#e2e8f0' }}
                     />
                     <YAxis 
                       label={{ value: 'X Position (normalized)', angle: -90, position: 'insideLeft' }}
-                      domain={[-2, 2]}
+                      domain={['dataMin - 0.5', 'dataMax + 0.5']}
+                      tickFormatter={(value) => value.toFixed(2)}
+                      tick={{ fontSize: 12, fill: '#4a5568' }}
+                      axisLine={{ stroke: '#e2e8f0' }}
+                      tickLine={{ stroke: '#e2e8f0' }}
                     />
                     <Tooltip 
                       formatter={(value, _name) => [value, 'X Position']}
-                      labelFormatter={(label) => `Data Point: ${label}`}
+                      labelFormatter={(label) => `Time: ${label.toFixed(2)}s`}
                     />
                     <Area 
                       type="monotone" 
@@ -171,48 +196,31 @@ export default function PlaybackTab() {
                 </ResponsiveContainer>
               </div>
               
-              <div className="playback-controls">
-                <div className="control-group">
-                  <button 
-                    onClick={togglePlayback} 
-                    className={`control-btn ${isPlaying ? 'pause' : 'play'}`}
-                  >
-                    {isPlaying ? '⏸️ Pause' : '▶️ Play'}
-                  </button>
-                  <button onClick={resetPlayback} className="control-btn reset">
-                    🔄 Reset
-                  </button>
+              <div className="range-controls">
+                <div className="range-group">
+                  <label htmlFor="range-start">Range Start: {rangeStart}%</label>
+                  <input
+                    type="range"
+                    id="range-start"
+                    min="0"
+                    max="100"
+                    value={rangeStart}
+                    onChange={handleRangeStartChange}
+                    className="range-slider"
+                  />
                 </div>
                 
-                <div className="control-group">
-                  <label htmlFor="speed-select">Speed:</label>
-                  <select 
-                    id="speed-select"
-                    value={playbackSpeed} 
-                    onChange={handleSpeedChange}
-                    className="speed-select"
-                  >
-                    <option value={0.5}>0.5x</option>
-                    <option value={1}>1x</option>
-                    <option value={2}>2x</option>
-                    <option value={5}>5x</option>
-                    <option value={10}>10x</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div className="timeline-container">
-                <input
-                  type="range"
-                  min="0"
-                  max={Math.max(0, recordingData.length - 1)}
-                  value={currentTimeIndex}
-                  onChange={handleTimelineChange}
-                  className="timeline-slider"
-                />
-                <div className="timeline-labels">
-                  <span>Start</span>
-                  <span>End</span>
+                <div className="range-group">
+                  <label htmlFor="range-end">Range End: {rangeEnd}%</label>
+                  <input
+                    type="range"
+                    id="range-end"
+                    min="0"
+                    max="100"
+                    value={rangeEnd}
+                    onChange={handleRangeEndChange}
+                    className="range-slider"
+                  />
                 </div>
               </div>
             </>

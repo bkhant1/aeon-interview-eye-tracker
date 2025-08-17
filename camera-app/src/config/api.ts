@@ -9,5 +9,11 @@ export const API_ENDPOINTS = {
   calibrationData: (sessionId: string) => `${API_BASE_URL}/api/calibration/${sessionId}`,
   deleteSession: (sessionId: string) => `${API_BASE_URL}/api/sessions/${sessionId}`,
   allSessions: `${API_BASE_URL}/api/sessions`,
-  recordingData: (sessionId: string, recordingNumber: number) => `${API_BASE_URL}/api/sessions/${sessionId}/recordings/${recordingNumber}`,
+  recordingData: (sessionId: string, recordingNumber: number, eye?: string, noiseReduction?: boolean) => {
+    const params = new URLSearchParams()
+    if (eye && eye !== 'both') params.append('eye', eye)
+    if (noiseReduction) params.append('noise_reduction', 'true')
+    const queryString = params.toString()
+    return `${API_BASE_URL}/api/sessions/${sessionId}/recordings/${recordingNumber}${queryString ? `?${queryString}` : ''}`
+  },
 } 

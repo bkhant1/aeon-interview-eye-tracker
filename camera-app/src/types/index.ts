@@ -16,6 +16,11 @@ export interface EyePosition {
   rightEye?: EyeData;
 }
 
+export interface NormalizedPosition {
+  timestamp: number;
+  x: number;
+}
+
 export interface CalibrationPosition extends EyePosition {
   gaze_direction: 'left' | 'center' | 'right';
 }

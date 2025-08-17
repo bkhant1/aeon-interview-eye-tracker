@@ -91,36 +91,6 @@ async def root():
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
-@app.post("/api/eye-tracking", response_model=EyeTrackingResponse)
-async def receive_eye_tracking_data(data: EyeTrackingData, db: AsyncSession = Depends(get_db)):
-    """
-    Receive eye tracking data for a specific session
-    """
-    try:
-        service = EyeTrackingService(db)
-        
-        # Convert Pydantic models to dict for storage
-        positions_dict = [position.model_dump() for position in data.positions]
-        
-        # Store the data (recording_number = None for general tracking data)
-        stored_count = await service.store_recording_data(data.session_id, None, positions_dict)
-        
-        # Log the received data
-        print(f"Session {data.session_id}: Received {len(data.positions)} positions")
-        print(f"Session {data.session_id}: Stored {stored_count} data points")
-        
-        return EyeTrackingResponse(
-            success=True,
-            message=f"Successfully received {len(data.positions)} positions",
-            session_id=data.session_id,
-            positions_received=len(data.positions),
-            total_positions=stored_count
-        )
-        
-    except Exception as e:
-        print(f"Error processing eye tracking data: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
 @app.post("/api/eye-tracking/{session_id}", response_model=RecordingResponse)
 async def receive_recording_data(session_id: str, data: RecordingData, db: AsyncSession = Depends(get_db)):
     """
@@ -249,18 +219,26 @@ async def get_all_sessions(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.get("/api/sessions/{session_id}/recordings/{recording_number}")
-async def get_recording_data(session_id: str, recording_number: int, db: AsyncSession = Depends(get_db)):
+async def get_recording_data(
+    session_id: str, 
+    recording_number: int, 
+    eye: str = "both",
+    noise_reduction: bool = False,
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Get data for a specific recording
+    Get data for a specific recording with optional filtering and noise reduction
     """
     try:
         service = EyeTrackingService(db)
-        data = await service.get_recording_data(session_id, recording_number)
+        data = await service.get_recording_data(session_id, recording_number, eye, noise_reduction)
         
         return {
             "success": True,
             "session_id": session_id,
             "recording_number": recording_number,
+            "eye": eye,
+            "noise_reduction": noise_reduction,
             "data": data,
             "data_points": len(data)
         }

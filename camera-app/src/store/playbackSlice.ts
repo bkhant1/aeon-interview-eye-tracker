@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import { API_ENDPOINTS } from '../config/api'
-import type { EyePosition } from '../types'
+import type { EyePosition, NormalizedPosition } from '../types'
 
 interface Recording {
   recording_number: number
@@ -27,9 +27,11 @@ interface PlaybackState {
   sessions: Session[]
   selectedSession: Session | null
   selectedRecording: Recording | null
-  recordingData: EyePosition[]
+  recordingData: NormalizedPosition[]
   isLoading: boolean
   error: string | null
+  eyeFilter: string
+  noiseReduction: boolean
 }
 
 const initialState: PlaybackState = {
@@ -39,6 +41,8 @@ const initialState: PlaybackState = {
   recordingData: [],
   isLoading: false,
   error: null,
+  eyeFilter: 'both',
+  noiseReduction: false,
 }
 
 // Async thunk to fetch all sessions
@@ -64,9 +68,19 @@ export const fetchAllSessions = createAsyncThunk(
 // Async thunk to fetch recording data
 export const fetchRecordingData = createAsyncThunk(
   'playback/fetchRecordingData',
-  async ({ sessionId, recordingNumber }: { sessionId: string; recordingNumber: number }) => {
+  async ({ 
+    sessionId, 
+    recordingNumber, 
+    eye = 'both', 
+    noiseReduction = false 
+  }: { 
+    sessionId: string; 
+    recordingNumber: number; 
+    eye?: string; 
+    noiseReduction?: boolean; 
+  }) => {
     try {
-      const response = await fetch(API_ENDPOINTS.recordingData(sessionId, recordingNumber))
+      const response = await fetch(API_ENDPOINTS.recordingData(sessionId, recordingNumber, eye, noiseReduction))
       
       if (!response.ok) {
         throw new Error(`Failed to fetch recording data: ${response.status}`)

@@ -27,7 +27,37 @@ export const calculateEyesNormalizedRelativePosition = (eyePosition: EyePosition
   const range = rightCornerMaxDistance - leftCornerMinDistance
 
   const currentLeftCornerDistance = getEuclideanDistance(leftEye.center, leftEye.corners[0])
-  const relativePosition = (currentLeftCornerDistance - leftCornerMinDistance) / range
+  const relativePosition = 2 * ((currentLeftCornerDistance - leftCornerMinDistance) / range - 0.5)
 
   return relativePosition
+}
+
+export const averageEyeSpeed = (data: Array<{x: number, timestamp: number}>): number => {
+  /**
+   * Calculate average eye movement speed from normalized data
+   * Data format: [{x: number, timestamp: number}, ...]
+   * Returns: Average speed in units per second
+   */
+  if (data.length < 2) {
+    return 0.0
+  }
+  
+  let totalDistance = 0.0
+  let totalTime = 0.0
+  
+  for (let i = 1; i < data.length; i++) {
+    // Calculate distance between consecutive points
+    const distance = Math.abs(data[i].x - data[i-1].x)
+    totalDistance += distance
+    
+    // Calculate time difference in seconds
+    const timeDiff = (data[i].timestamp - data[i-1].timestamp) / 1000.0
+    totalTime += timeDiff
+  }
+  
+  if (totalTime === 0) {
+    return 0.0
+  }
+  
+  return totalDistance / totalTime
 }

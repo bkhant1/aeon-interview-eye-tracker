@@ -3,6 +3,7 @@ from sqlalchemy import select, delete
 from database import EyeTrackingData, CalibrationData
 from typing import List, Optional
 from datetime import datetime
+from utils import get_euclidean_distance, calculate_normalized_position, apply_noise_reduction_to_normalized_data
 
 class EyeTrackingService:
     def __init__(self, db: AsyncSession):
@@ -187,14 +188,32 @@ class EyeTrackingService:
         
         return list(data_by_timestamp.values())
     
-    async def get_recording_data(self, session_id: str, recording_number: int) -> List[dict]:
+    async def get_recording_data(self, session_id: str, recording_number: int, eye: str = "both", noise_reduction: bool = False) -> List[dict]:
         """
-        Get data for a specific recording
+        Get normalized X positions for a specific recording with optional filtering and noise reduction
         """
-        query = select(EyeTrackingData).where(
-            EyeTrackingData.session_id == session_id,
-            EyeTrackingData.recording_number == recording_number
-        )
+        # Get calibration data for normalization
+        calibration_data = await self.get_calibration_data(session_id)
+        
+        # Build query based on eye filter
+        if eye == "left":
+            query = select(EyeTrackingData).where(
+                EyeTrackingData.session_id == session_id,
+                EyeTrackingData.recording_number == recording_number,
+                EyeTrackingData.eye_side == 'left'
+            )
+        elif eye == "right":
+            query = select(EyeTrackingData).where(
+                EyeTrackingData.session_id == session_id,
+                EyeTrackingData.recording_number == recording_number,
+                EyeTrackingData.eye_side == 'right'
+            )
+        else:  # "both"
+            query = select(EyeTrackingData).where(
+                EyeTrackingData.session_id == session_id,
+                EyeTrackingData.recording_number == recording_number
+            )
+        
         result = await self.db.execute(query)
         records = result.scalars().all()
         
@@ -234,7 +253,24 @@ class EyeTrackingService:
             else:
                 data_by_timestamp[record.timestamp]['rightEye'] = eye_data
         
-        return list(data_by_timestamp.values())
+        
+        data = list(data_by_timestamp.values())
+        
+        # Convert to normalized X positions
+        normalized_data = []
+        for point in data:
+            normalized_position = calculate_normalized_position(point, calibration_data)
+            if normalized_position is not None:
+                normalized_data.append({
+                    'timestamp': point['timestamp'],
+                    'x': normalized_position
+                })
+        
+        # Apply noise reduction if requested
+        if noise_reduction:
+            normalized_data = apply_noise_reduction_to_normalized_data(normalized_data)
+        
+        return normalized_data
     
     async def get_calibration_data(self, session_id: str) -> List[dict]:
         """

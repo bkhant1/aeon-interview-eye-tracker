@@ -23,7 +23,7 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
   const [isSendingRecording, setIsSendingRecording] = useState(false)
   const [recordingMessage, setRecordingMessage] = useState<string>('')
 
-  const { positions: eyePositions, isTracking, isRecording, recordingBuffer } = useAppSelector(state => state.eyeTracking)
+  const { positions: eyePositions, isRecording, recordingBuffer } = useAppSelector(state => state.eyeTracking)
   const { calibrationPoints, recordingNumber } = useAppSelector(state => state.app)
   
   const handleStartRecording = () => {
@@ -68,13 +68,7 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
     }
   }
 
-  const handleClearRecording = () => {
-    dispatch(clearRecordingBuffer())
-    setRecordingMessage('🗑️ Recording buffer cleared')
-    setTimeout(() => {
-      setRecordingMessage('')
-    }, 2000)
-  }
+
 
   const getLiveData = () => {
     if (eyePositions.length === 0 || calibrationPoints.length === 0) return []
@@ -143,30 +137,7 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
               ⏹️ Stop Recording
             </button>
           )}
-          <button 
-            onClick={handleClearRecording} 
-            className="control-btn reset"
-            disabled={isSendingRecording || isRecording}
-          >
-            🗑️ Clear Recording Buffer
-          </button>
-        </div>
 
-        <div className="tracking-status">
-          <div className={`status-indicator ${isTracking ? 'active' : 'inactive'}`}>
-            {isTracking ? '🟢 Tracking Active' : '🔴 Tracking Paused'}
-          </div>
-          <div className={`status-indicator ${isRecording ? 'active' : 'inactive'}`}>
-            {isRecording ? '🔴 Recording Active' : '⚪ Recording Paused'}
-          </div>
-          <div className="status-indicator">
-            📊 Recording #{recordingNumber}
-          </div>
-          {isSendingRecording && (
-            <div className="status-indicator active">
-              📤 Sending Data...
-            </div>
-          )}
         </div>
 
         {recordingMessage && (
