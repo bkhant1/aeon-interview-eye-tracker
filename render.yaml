@@ -2,7 +2,6 @@ services:
   - type: web
     name: eye-tracking-backend
     env: python
-    plan: free
     buildCommand: cd backend && uv sync
     startCommand: cd backend && uv run python main.py
     envVars:
@@ -16,7 +15,6 @@ services:
   - type: web
     name: eye-tracking-frontend
     env: static
-    plan: free
     buildCommand: cd camera-app && npm install && npm run build
     staticPublishPath: ./camera-app/dist
     envVars:
