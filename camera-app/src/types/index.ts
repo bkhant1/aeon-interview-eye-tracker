@@ -16,6 +16,10 @@ export interface EyePosition {
   rightEye?: EyeData;
 }
 
+export interface CalibrationPosition extends EyePosition {
+  gaze_direction: 'left' | 'center' | 'right';
+}
+
 export interface VideoStreamState {
   isActive: boolean;
   stream: MediaStream | null;
@@ -33,8 +37,9 @@ export interface EyeTrackingState {
 
 export interface AppState {
   currentStep: 'permission' | 'calibration' | 'tracking' | 'playback';
-  calibrationPoints: EyePosition[];
+  calibrationPoints: CalibrationPosition[];
   sessionId: string;
+  recordingNumber: number;
 }
 
 export interface RootState {

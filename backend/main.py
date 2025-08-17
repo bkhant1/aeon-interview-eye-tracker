@@ -37,6 +37,12 @@ class EyePosition(BaseModel):
     leftEye: Optional[EyeData] = None
     rightEye: Optional[EyeData] = None
 
+class CalibrationPosition(BaseModel):
+    timestamp: int
+    gaze_direction: str  # 'left', 'center', 'right'
+    leftEye: Optional[EyeData] = None
+    rightEye: Optional[EyeData] = None
+
 class EyeTrackingData(BaseModel):
     session_id: str
     positions: List[EyePosition]
@@ -160,7 +166,7 @@ async def receive_calibration_data(data: CalibrationData, db: AsyncSession = Dep
         # Convert Pydantic models to dict for storage
         calibration_dict = [point.model_dump() for point in data.calibration_points]
         
-        # Store calibration data (recording_number = 0 for calibration)
+        # Store calibration data in the dedicated calibration table
         stored_count = await service.store_calibration_data(data.session_id, calibration_dict)
         
         # Log the received data

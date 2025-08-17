@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-from database import EyeTrackingData
+from database import EyeTrackingData, CalibrationData
 from typing import List, Optional
 from datetime import datetime
 
@@ -75,9 +75,71 @@ class EyeTrackingService:
     
     async def store_calibration_data(self, session_id: str, calibration_points: List[dict]) -> int:
         """
-        Store calibration data in flattened format (recording_number = 0 for calibration)
+        Store calibration data in the dedicated calibration table
         """
-        return await self.store_recording_data(session_id, 0, calibration_points)
+        stored_count = 0
+        
+        for i, point in enumerate(calibration_points):
+            timestamp = point.get('timestamp')
+            confidence = point.get('confidence')
+            gaze_direction = point.get('gaze_direction', 'center')  # Default to center if not specified
+            
+            # Process left eye data
+            if point.get('leftEye'):
+                left_eye = point['leftEye']
+                left_center = left_eye.get('center', {})
+                left_corners = left_eye.get('corners', [])
+                
+                # Create left eye calibration record
+                left_record = CalibrationData(
+                    session_id=session_id,
+                    timestamp=timestamp,
+                    eye_side='left',
+                    gaze_direction=gaze_direction,
+                    iris_x=left_center.get('x'),
+                    iris_y=left_center.get('y'),
+                    iris_z=left_center.get('z'),
+                    corner_left_x=left_corners[0].get('x') if len(left_corners) > 0 else None,
+                    corner_left_y=left_corners[0].get('y') if len(left_corners) > 0 else None,
+                    corner_left_z=left_corners[0].get('z') if len(left_corners) > 0 else None,
+                    corner_right_x=left_corners[1].get('x') if len(left_corners) > 1 else None,
+                    corner_right_y=left_corners[1].get('y') if len(left_corners) > 1 else None,
+                    corner_right_z=left_corners[1].get('z') if len(left_corners) > 1 else None,
+                    confidence=confidence,
+                    calibration_point_index=i
+                )
+                self.db.add(left_record)
+                stored_count += 1
+            
+            # Process right eye data
+            if point.get('rightEye'):
+                right_eye = point['rightEye']
+                right_center = right_eye.get('center', {})
+                right_corners = right_eye.get('corners', [])
+                
+                # Create right eye calibration record
+                right_record = CalibrationData(
+                    session_id=session_id,
+                    timestamp=timestamp,
+                    eye_side='right',
+                    gaze_direction=gaze_direction,
+                    iris_x=right_center.get('x'),
+                    iris_y=right_center.get('y'),
+                    iris_z=right_center.get('z'),
+                    corner_left_x=right_corners[0].get('x') if len(right_corners) > 0 else None,
+                    corner_left_y=right_corners[0].get('y') if len(right_corners) > 0 else None,
+                    corner_left_z=right_corners[0].get('z') if len(right_corners) > 0 else None,
+                    corner_right_x=right_corners[1].get('x') if len(right_corners) > 1 else None,
+                    corner_right_y=right_corners[1].get('y') if len(right_corners) > 1 else None,
+                    corner_right_z=right_corners[1].get('z') if len(right_corners) > 1 else None,
+                    confidence=confidence,
+                    calibration_point_index=i
+                )
+                self.db.add(right_record)
+                stored_count += 1
+        
+        await self.db.commit()
+        return stored_count
     
     async def get_session_data(self, session_id: str) -> List[dict]:
         """
@@ -176,9 +238,103 @@ class EyeTrackingService:
     
     async def get_calibration_data(self, session_id: str) -> List[dict]:
         """
-        Get calibration data for a session (recording_number = 0)
+        Get calibration data for a session from the dedicated calibration table
         """
-        return await self.get_recording_data(session_id, 0)
+        query = select(CalibrationData).where(CalibrationData.session_id == session_id)
+        result = await self.db.execute(query)
+        records = result.scalars().all()
+        
+        # Group by timestamp and gaze direction, then reconstruct the original format
+        data_by_timestamp_gaze = {}
+        for record in records:
+            key = (record.timestamp, record.gaze_direction)
+            if key not in data_by_timestamp_gaze:
+                data_by_timestamp_gaze[key] = {
+                    'timestamp': record.timestamp,
+                    'confidence': record.confidence,
+                    'gaze_direction': record.gaze_direction,
+                    'calibration_point_index': record.calibration_point_index,
+                    'leftEye': None,
+                    'rightEye': None
+                }
+            
+            eye_data = {
+                'center': {
+                    'x': record.iris_x,
+                    'y': record.iris_y,
+                    'z': record.iris_z
+                },
+                'corners': [
+                    {
+                        'x': record.corner_left_x,
+                        'y': record.corner_left_y,
+                        'z': record.corner_left_z
+                    },
+                    {
+                        'x': record.corner_right_x,
+                        'y': record.corner_right_y,
+                        'z': record.corner_right_z
+                    }
+                ]
+            }
+            
+            if record.eye_side == 'left':
+                data_by_timestamp_gaze[key]['leftEye'] = eye_data
+            else:
+                data_by_timestamp_gaze[key]['rightEye'] = eye_data
+        
+        return list(data_by_timestamp_gaze.values())
+    
+    async def get_calibration_data_by_direction(self, session_id: str, gaze_direction: str) -> List[dict]:
+        """
+        Get calibration data for a specific gaze direction (left, center, right)
+        """
+        query = select(CalibrationData).where(
+            CalibrationData.session_id == session_id,
+            CalibrationData.gaze_direction == gaze_direction
+        )
+        result = await self.db.execute(query)
+        records = result.scalars().all()
+        
+        # Group by timestamp and reconstruct the original format
+        data_by_timestamp = {}
+        for record in records:
+            if record.timestamp not in data_by_timestamp:
+                data_by_timestamp[record.timestamp] = {
+                    'timestamp': record.timestamp,
+                    'confidence': record.confidence,
+                    'gaze_direction': record.gaze_direction,
+                    'calibration_point_index': record.calibration_point_index,
+                    'leftEye': None,
+                    'rightEye': None
+                }
+            
+            eye_data = {
+                'center': {
+                    'x': record.iris_x,
+                    'y': record.iris_y,
+                    'z': record.iris_z
+                },
+                'corners': [
+                    {
+                        'x': record.corner_left_x,
+                        'y': record.corner_left_y,
+                        'z': record.corner_left_z
+                    },
+                    {
+                        'x': record.corner_right_x,
+                        'y': record.corner_right_y,
+                        'z': record.corner_right_z
+                    }
+                ]
+            }
+            
+            if record.eye_side == 'left':
+                data_by_timestamp[record.timestamp]['leftEye'] = eye_data
+            else:
+                data_by_timestamp[record.timestamp]['rightEye'] = eye_data
+        
+        return list(data_by_timestamp.values())
     
     async def get_session_summary(self, session_id: str) -> dict:
         """

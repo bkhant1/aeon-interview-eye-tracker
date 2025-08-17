@@ -47,6 +47,41 @@ class EyeTrackingData(Base):
         Index('idx_recording', 'session_id', 'recording_number'),
     )
 
+class CalibrationData(Base):
+    __tablename__ = "calibration_data"
+    
+    session_id = Column(String(255), primary_key=True)
+    timestamp = Column(BigInteger, primary_key=True)
+    eye_side = Column(String(10), primary_key=True)
+    gaze_direction = Column(String(10), primary_key=True)  # 'left', 'center', 'right'
+    
+    # Actual eye position
+    iris_x = Column(Float, nullable=True)
+    iris_y = Column(Float, nullable=True)
+    iris_z = Column(Float, nullable=True)
+    
+    # Eye corner coordinates (left corner)
+    corner_left_x = Column(Float, nullable=True)
+    corner_left_y = Column(Float, nullable=True)
+    corner_left_z = Column(Float, nullable=True)
+    
+    # Eye corner coordinates (right corner)
+    corner_right_x = Column(Float, nullable=True)
+    corner_right_y = Column(Float, nullable=True)
+    corner_right_z = Column(Float, nullable=True)
+    
+    # Additional metadata
+    confidence = Column(Float, nullable=True)
+    calibration_point_index = Column(BigInteger, nullable=True)  # Which calibration point this was
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Indexes for better query performance
+    __table_args__ = (
+        Index('idx_calibration_session_timestamp', 'session_id', 'timestamp'),
+        Index('idx_calibration_point_index', 'session_id', 'calibration_point_index'),
+        Index('idx_calibration_gaze_direction', 'session_id', 'gaze_direction'),
+    )
+
 # Dependency to get database session
 async def get_db():
     async with AsyncSessionLocal() as session:

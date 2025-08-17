@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { addCalibrationPoint, sendCalibrationData } from '../store/appSlice'
+import type { CalibrationPosition } from '../types'
 
 interface CalibrationProps {
   onCalibrationComplete: () => void
@@ -15,15 +16,18 @@ export default function Calibration({ onCalibrationComplete }: CalibrationProps)
   const calibrationSteps = [
     { 
       instruction: "By moving only your eyes, look as far LEFT as you can, then press SPACEBAR",
-      label: "LEFT"
+      label: "LEFT",
+      gaze_direction: 'left' as const
     },
     { 
       instruction: "By moving only your eyes, look straight AHEAD, then press SPACEBAR", 
-      label: "CENTER"
+      label: "CENTER",
+      gaze_direction: 'center' as const
     },
     { 
       instruction: "By moving only your eyes, look as far RIGHT as you can, then press SPACEBAR",
-      label: "RIGHT"
+      label: "RIGHT",
+      gaze_direction: 'right' as const
     }
   ];
 
@@ -34,7 +38,14 @@ export default function Calibration({ onCalibrationComplete }: CalibrationProps)
       return
     }
     console.log(currentEyeData)
-    dispatch(addCalibrationPoint(currentEyeData))
+    
+    // Create calibration position with gaze direction
+    const calibrationPosition: CalibrationPosition = {
+      ...currentEyeData,
+      gaze_direction: calibrationSteps[currentCalibrationPoint].gaze_direction
+    }
+    
+    dispatch(addCalibrationPoint(calibrationPosition))
 
     if (currentCalibrationPoint < calibrationSteps.length - 1) {
       setCurrentCalibrationPoint(prev => prev + 1)
