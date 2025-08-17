@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: eye-tracking-backend
+    env: python
+    plan: free
+    buildCommand: cd backend && uv sync
+    startCommand: cd backend && uv run python main.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eye-tracking-db
+          property: connectionString
+
+  - type: web
+    name: eye-tracking-frontend
+    env: static
+    plan: free
+    buildCommand: cd camera-app && npm install && npm run build
+    staticPublishPath: ./camera-app/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://eye-tracking-backend.onrender.com
+
+databases:
+  - name: eye-tracking-db
+    databaseName: eye_tracking
+    user: eye_tracking_user
+    plan: free 

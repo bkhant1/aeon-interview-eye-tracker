@@ -15,7 +15,7 @@ app = FastAPI(title="Eye Tracking API", version="1.0.0")
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Frontend URLs
+    allow_origins=["*"],  # Allow all origins for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -271,4 +271,9 @@ async def delete_session(session_id: str, db: AsyncSession = Depends(get_db)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001) 
+    import os
+    
+    # Get port from environment variable or default to 8001
+    port = int(os.environ.get("PORT", 8001))
+    
+    uvicorn.run(app, host="0.0.0.0", port=port) 

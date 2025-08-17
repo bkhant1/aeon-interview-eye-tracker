@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { EyePosition, CalibrationPosition } from '../types'
+import { API_ENDPOINTS } from '../config/api'
 
 const generateSessionId = () => {
   return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -13,7 +14,7 @@ export const sendCalibrationData = createAsyncThunk(
     const { sessionId, calibrationPoints } = state.app
     
     try {
-      const response = await fetch('http://localhost:8001/api/calibration', {
+      const response = await fetch(API_ENDPOINTS.calibration, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -46,7 +47,7 @@ export const sendRecordingData = createAsyncThunk(
     const { sessionId, recordingNumber } = state.app
     
     try {
-      const response = await fetch(`http://localhost:8001/api/eye-tracking/`, {
+      const response = await fetch(API_ENDPOINTS.eyeTracking, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
