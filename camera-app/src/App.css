@@ -159,6 +159,45 @@
   text-align: center;
 }
 
+.recording-message {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  text-align: center;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.recording-message.success {
+  background: #c6f6d5;
+  border: 1px solid #9ae6b4;
+  color: #22543d;
+}
+
+.recording-message.error {
+  background: #fed7d7;
+  border: 1px solid #feb2b2;
+  color: #c53030;
+}
+
+.recording-message.warning {
+  background: #fef5e7;
+  border: 1px solid #fbd38d;
+  color: #c05621;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Calibration styles */
 .calibration-container {
   position: relative;

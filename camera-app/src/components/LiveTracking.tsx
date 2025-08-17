@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useAppSelector, useAppDispatch } from '../store/hooks'
 import { setRecording, clearRecordingBuffer } from '../store/eyeTrackingSlice'
+import { sendRecordingData, incrementRecordingNumber } from '../store/appSlice'
 import { calculateEyesNormalizedRelativePosition } from '../utils/positionCalculations'
 
 interface LiveTrackingProps {
@@ -18,20 +20,60 @@ const generateTicks = (start: number, end: number, step: number): number[] => {
 
 export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
   const dispatch = useAppDispatch()
+  const [isSendingRecording, setIsSendingRecording] = useState(false)
+  const [recordingMessage, setRecordingMessage] = useState<string>('')
 
   const { positions: eyePositions, isTracking, isRecording, recordingBuffer } = useAppSelector(state => state.eyeTracking)
-  const calibrationPoints = useAppSelector(state => state.app.calibrationPoints)
+  const { calibrationPoints, recordingNumber } = useAppSelector(state => state.app)
   
   const handleStartRecording = () => {
+    setRecordingMessage('')
     dispatch(setRecording(true))
   }
 
-  const handleStopRecording = () => {
+  const handleStopRecording = async () => {
     dispatch(setRecording(false))
+    
+    // Send recording data to API if we have data
+    if (recordingBuffer.length > 0) {
+      setIsSendingRecording(true)
+      setRecordingMessage('Sending recording data...')
+      
+      try {
+        await dispatch(sendRecordingData(recordingBuffer)).unwrap()
+        dispatch(incrementRecordingNumber())
+        dispatch(clearRecordingBuffer())
+        setRecordingMessage(`✅ Recording #${recordingNumber} sent successfully!`)
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setRecordingMessage('')
+        }, 3000)
+      } catch (error) {
+        console.error('Failed to send recording data:', error)
+        setRecordingMessage('❌ Failed to send recording data. Please try again.')
+        
+        // Clear error message after 5 seconds
+        setTimeout(() => {
+          setRecordingMessage('')
+        }, 5000)
+      } finally {
+        setIsSendingRecording(false)
+      }
+    } else {
+      setRecordingMessage('⚠️ No data to record. Please try recording again.')
+      setTimeout(() => {
+        setRecordingMessage('')
+      }, 3000)
+    }
   }
 
   const handleClearRecording = () => {
     dispatch(clearRecordingBuffer())
+    setRecordingMessage('🗑️ Recording buffer cleared')
+    setTimeout(() => {
+      setRecordingMessage('')
+    }, 2000)
   }
 
   const getLiveData = () => {
@@ -85,15 +127,27 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
       <div className="tracking-controls">
         <div className="control-group">
           {!isRecording ? (
-            <button onClick={handleStartRecording} className="control-btn play">
+            <button 
+              onClick={handleStartRecording} 
+              className="control-btn play"
+              disabled={isSendingRecording}
+            >
               🔴 Start Recording
             </button>
           ) : (
-            <button onClick={handleStopRecording} className="control-btn pause">
+            <button 
+              onClick={handleStopRecording} 
+              className="control-btn pause"
+              disabled={isSendingRecording}
+            >
               ⏹️ Stop Recording
             </button>
           )}
-          <button onClick={handleClearRecording} className="control-btn reset">
+          <button 
+            onClick={handleClearRecording} 
+            className="control-btn reset"
+            disabled={isSendingRecording || isRecording}
+          >
             🗑️ Clear Recording Buffer
           </button>
         </div>
@@ -105,8 +159,21 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
           <div className={`status-indicator ${isRecording ? 'active' : 'inactive'}`}>
             {isRecording ? '🔴 Recording Active' : '⚪ Recording Paused'}
           </div>
-
+          <div className="status-indicator">
+            📊 Recording #{recordingNumber}
+          </div>
+          {isSendingRecording && (
+            <div className="status-indicator active">
+              📤 Sending Data...
+            </div>
+          )}
         </div>
+
+        {recordingMessage && (
+          <div className={`recording-message ${recordingMessage.includes('✅') ? 'success' : recordingMessage.includes('❌') ? 'error' : 'warning'}`}>
+            {recordingMessage}
+          </div>
+        )}
       </div>
 
       <div className="tracking-stats">

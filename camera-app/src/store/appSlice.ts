@@ -39,12 +39,47 @@ export const sendCalibrationData = createAsyncThunk(
   }
 )
 
+export const sendRecordingData = createAsyncThunk(
+  'app/sendRecordingData',
+  async (recordingBuffer: EyePosition[], { getState }) => {
+    const state = getState() as any
+    const { sessionId, recordingNumber } = state.app
+    
+    try {
+      const response = await fetch(`http://localhost:8001/api/eye-tracking/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          recording_number: recordingNumber,
+          positions: recordingBuffer,
+          timestamp: Date.now(),
+        }),
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Recording API call failed: ${response.status}`)
+      }
+      
+      const result = await response.json()
+      console.log('Recording data sent successfully:', result.message)
+      return result
+    } catch (error) {
+      console.error('Failed to send recording data:', error)
+      throw error
+    }
+  }
+)
+
 const appSlice = createSlice({
   name: 'app',
   initialState: {
     currentStep: 'permission' as 'permission' | 'calibration' | 'tracking' | 'playback',
     calibrationPoints: [] as EyePosition[],
     sessionId: generateSessionId(),
+    recordingNumber: 1,
   },
   reducers: {
     setCurrentStep: (state, action: PayloadAction<'permission' | 'calibration' | 'tracking' | 'playback'>) => {
@@ -60,9 +95,13 @@ const appSlice = createSlice({
       state.currentStep = 'permission'
       state.calibrationPoints = []
       state.sessionId = generateSessionId()
+      state.recordingNumber = 1
     },
     generateNewSessionId: (state) => {
       state.sessionId = generateSessionId()
+    },
+    incrementRecordingNumber: (state) => {
+      state.recordingNumber += 1
     },
   },
   extraReducers: (builder) => {
@@ -77,6 +116,16 @@ const appSlice = createSlice({
         // Handle error if needed
         console.error('Failed to send calibration data:', action.error)
       })
+      .addCase(sendRecordingData.pending, (_state) => {
+        // Optional: Add loading state if needed
+      })
+      .addCase(sendRecordingData.fulfilled, (_state) => {
+        // Recording data sent successfully
+      })
+      .addCase(sendRecordingData.rejected, (_state, action) => {
+        // Handle error if needed
+        console.error('Failed to send recording data:', action.error)
+      })
   },
 })
 
@@ -85,7 +134,8 @@ export const {
   addCalibrationPoint, 
   clearCalibrationPoints, 
   resetApp,
-  generateNewSessionId
+  generateNewSessionId,
+  incrementRecordingNumber
 } = appSlice.actions
 
 export default appSlice.reducer 

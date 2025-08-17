@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useAppSelector } from '../store/hooks'
+import { calculateEyesNormalizedRelativePosition } from '../utils/positionCalculations'
 
 interface PlaybackProps {
   onStartNewSession: () => void
@@ -13,6 +14,7 @@ export default function Playback({ onStartNewSession, onExit }: PlaybackProps) {
   const [currentTimeIndex, setCurrentTimeIndex] = useState(0)
 
   const { positions: eyePositions } = useAppSelector(state => state.eyeTracking)
+  const calibrationPoints = useAppSelector(state => state.app.calibrationPoints)
 
   // Playback controls
   const togglePlayback = () => {
@@ -53,15 +55,17 @@ export default function Playback({ onStartNewSession, onExit }: PlaybackProps) {
 
   // Get current playback data
   const getCurrentPlaybackData = () => {
-    if (eyePositions.length === 0) return []
+    if (eyePositions.length === 0 || calibrationPoints.length === 0) return []
     
     const endIndex = Math.min(currentTimeIndex + 1, eyePositions.length)
-    return eyePositions.slice(0, endIndex).map((pos, index) => ({
-      time: index,
-      x: pos.x,
-      y: pos.y,
-      timestamp: pos.timestamp
-    }))
+    return eyePositions.slice(0, endIndex).map((pos, index) => {
+      const relativePosition = calculateEyesNormalizedRelativePosition(pos, calibrationPoints)
+      return {
+        time: index,
+        x: relativePosition !== null ? relativePosition : 0,
+        timestamp: pos.timestamp
+      }
+    })
   }
 
   // Get current position for stats
@@ -69,7 +73,12 @@ export default function Playback({ onStartNewSession, onExit }: PlaybackProps) {
     if (eyePositions.length === 0 || currentTimeIndex >= eyePositions.length) {
       return { x: 0, y: 0 }
     }
-    return eyePositions[currentTimeIndex]
+    const currentPos = eyePositions[currentTimeIndex]
+    const relativePosition = calculateEyesNormalizedRelativePosition(currentPos, calibrationPoints)
+    return {
+      x: relativePosition !== null ? relativePosition : 0,
+      y: 0 // We're only tracking X position for now
+    }
   }
 
   const currentPos = getCurrentPosition()
@@ -83,11 +92,11 @@ export default function Playback({ onStartNewSession, onExit }: PlaybackProps) {
       <div className="tracking-stats">
         <div className="stat">
           <span className="stat-label">Current X:</span>
-          <span className="stat-value">{currentPos.x.toFixed(1)}</span>
+          <span className="stat-value">{currentPos.x.toFixed(3)}</span>
         </div>
         <div className="stat">
           <span className="stat-label">Current Y:</span>
-          <span className="stat-value">{currentPos.y.toFixed(1)}</span>
+          <span className="stat-value">{currentPos.y.toFixed(3)}</span>
         </div>
         <div className="stat">
           <span className="stat-label">Total Points:</span>
@@ -145,19 +154,21 @@ export default function Playback({ onStartNewSession, onExit }: PlaybackProps) {
       </div>
       
       <div className="chart-container">
+        <h3>Eye Tracking Playback (X-Axis Position)</h3>
         <ResponsiveContainer width="100%" height={400}>
           <AreaChart data={playbackData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
               dataKey="time" 
-              label={{ value: 'Time', position: 'insideBottom', offset: -10 }}
+              label={{ value: 'Time (data points)', position: 'insideBottom', offset: -10 }}
             />
             <YAxis 
-              label={{ value: 'Position', angle: -90, position: 'insideLeft' }}
+              label={{ value: 'X Position (normalized)', angle: -90, position: 'insideLeft' }}
+              domain={[-2, 2]}
             />
             <Tooltip 
-              formatter={(value, name) => [value, name === 'x' ? 'X Position' : 'Y Position']}
-              labelFormatter={(label) => `Time: ${label}`}
+              formatter={(value, name) => [value, 'X Position']}
+              labelFormatter={(label) => `Data Point: ${label}`}
             />
             <Area 
               type="monotone" 
@@ -166,14 +177,6 @@ export default function Playback({ onStartNewSession, onExit }: PlaybackProps) {
               fill="#667eea" 
               fillOpacity={0.3}
               name="X Position"
-            />
-            <Area 
-              type="monotone" 
-              dataKey="y" 
-              stroke="#f56565" 
-              fill="#f56565" 
-              fillOpacity={0.3}
-              name="Y Position"
             />
           </AreaChart>
         </ResponsiveContainer>
