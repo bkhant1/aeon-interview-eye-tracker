@@ -120,6 +120,8 @@ It offers APIs to:
 - save a recording: a bunch of eye positions at a bunch of timestamps, with a session id and a recording number
 - retrieve a timeseries for a recording (the normalized position of the left iris, with optional denoizing)
 
+Check out the [API docs!](https://eye-tracking-backend.onrender.com/docs#/)
+
 ### Database
 
 We use `PostgresQL` as a database. It has the advantage to be widely available, well documented, and supported by `SQLAlchemy`. While it is not designed for time-series first, it supports large scale time series with no trouble (see this [AWS article](https://aws.amazon.com/blogs/database/designing-high-performance-time-series-data-tables-on-amazon-rds-for-postgresql/)).
