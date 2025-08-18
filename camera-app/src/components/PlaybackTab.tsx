@@ -9,7 +9,6 @@ export default function PlaybackTab() {
   const dispatch = useAppDispatch()
   const [rangeStart, setRangeStart] = useState(0)
   const [rangeEnd, setRangeEnd] = useState(100)
-  const [selectedEye, setSelectedEye] = useState<'left' | 'right'>('left')
   const [useNoiseReduction, setUseNoiseReduction] = useState(true)
 
   const { sessions, selectedSession, selectedRecording, recordingData, isLoading, error } = useAppSelector(state => state.playback)
@@ -41,7 +40,7 @@ export default function PlaybackTab() {
     await dispatch(fetchRecordingData({
       sessionId: recording.session_id,
       recordingNumber: recording.recording_number,
-      eye: selectedEye,
+      eye: 'left',
       noiseReduction: useNoiseReduction
     }))
   }
@@ -50,17 +49,7 @@ export default function PlaybackTab() {
     dispatch(setSelectedRecording(null))
   }
 
-  const handleEyeChange = async (eye: 'left' | 'right') => {
-    setSelectedEye(eye)
-    if (selectedRecording) {
-      await dispatch(fetchRecordingData({
-        sessionId: selectedRecording.session_id,
-        recordingNumber: selectedRecording.recording_number,
-        eye: eye,
-        noiseReduction: useNoiseReduction
-      }))
-    }
-  }
+
 
   const handleNoiseReductionChange = async (noiseReduction: boolean) => {
     setUseNoiseReduction(noiseReduction)
@@ -69,7 +58,7 @@ export default function PlaybackTab() {
       await dispatch(fetchRecordingData({
         sessionId: selectedRecording.session_id,
         recordingNumber: selectedRecording.recording_number,
-        eye: selectedEye,
+        eye: 'left',
         noiseReduction: noiseReduction
       }))
     }
@@ -115,6 +104,29 @@ export default function PlaybackTab() {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
   }
 
+  const downloadCSV = () => {
+    if (rangeData.length === 0) return
+
+    // Create CSV content
+    const csvHeaders = 'Time (seconds),X Position (normalized),Timestamp\n'
+    const csvRows = rangeData.map(point => 
+      `${point.time.toFixed(3)},${point.x.toFixed(6)},${point.timestamp}`
+    ).join('\n')
+    const csvContent = csvHeaders + csvRows
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `eye-tracking-session-${selectedRecording?.session_id.split('-')[1]}-recording-${selectedRecording?.recording_number}-${formatTimestamp(Date.now()).replace(/[/:]/g, '-')}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   // If a recording is selected, show full playback view
   if (selectedRecording) {
     return (
@@ -139,18 +151,7 @@ export default function PlaybackTab() {
                 <div className="range-stats">
                   <p>Range Duration: {formatRangeDuration(currentRangeDuration)} | Range Data Points: {currentRangeDataPoints.toLocaleString()} | Avg Speed: {currentRangeAverageSpeed.toFixed(3)} units/s</p>
                 </div>
-                <div className="option-group">
-                  <label htmlFor="eye-select">Eye:</label>
-                  <select 
-                    id="eye-select"
-                    value={selectedEye} 
-                    onChange={(e) => handleEyeChange(e.target.value as 'left' | 'right')}
-                    className="option-select"
-                  >
-                    <option value="left">Left Eye</option>
-                    <option value="right">Right Eye</option>
-                  </select>
-                </div>
+
                 
                 <div className="option-group">
                   <label htmlFor="noise-reduction-toggle">Noise reduction:</label>
@@ -162,10 +163,21 @@ export default function PlaybackTab() {
                     className="option-checkbox"
                   />
                 </div>
+                
+                <div className="option-group">
+                  <button 
+                    onClick={downloadCSV}
+                    disabled={rangeData.length === 0}
+                    className="download-btn"
+                    title="Download current range data as CSV"
+                  >
+                    📥 Download CSV
+                  </button>
+                </div>
               </div>
               
               <div className="chart-container">
-                <h3>Eye Tracking Playback (X-Axis Position)</h3>
+                <h3>Left Eye Tracking Playback (X-Axis Position)</h3>
                 <ResponsiveContainer width="100%" height={400}>
                   <AreaChart data={rangeData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f7fafc" />
