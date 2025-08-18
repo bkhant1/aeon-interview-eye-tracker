@@ -154,35 +154,6 @@ async def receive_calibration_data(data: CalibrationData, db: AsyncSession = Dep
         print(f"Error processing calibration data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-@app.get("/api/recordings/{session_id}")
-async def get_session_recordings(session_id: str, db: AsyncSession = Depends(get_db)):
-    """
-    Get all recordings for a specific session
-    """
-    try:
-        service = EyeTrackingService(db)
-        summary = await service.get_session_summary(session_id)
-        
-        # Get data for each recording
-        recordings = {}
-        for recording_number in summary['recording_numbers']:
-            if recording_number > 0:  # Skip calibration (recording_number = 0)
-                data = await service.get_recording_data(session_id, recording_number)
-                recordings[f"recording_{recording_number}"] = {
-                    "recording_number": recording_number,
-                    "data": data,
-                    "data_points": len(data)
-                }
-        
-        return {
-            "session_id": session_id,
-            "summary": summary,
-            "recordings": recordings
-        }
-    except Exception as e:
-        print(f"Error retrieving recordings: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
 @app.get("/api/calibration/{session_id}")
 async def get_session_calibration(session_id: str, db: AsyncSession = Depends(get_db)):
     """
