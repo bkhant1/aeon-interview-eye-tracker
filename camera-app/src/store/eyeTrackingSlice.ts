@@ -39,7 +39,7 @@ const initializeFaceLandmarker = async (): Promise<FaceLandmarker> => {
 };
 
 // Process face landmarker results to extract eye corners and iris centers
-const processResults = (results: any) => {
+const processResults = (results: { faceLandmarks?: Array<Array<{ x: number; y: number; z: number }>> }) => {
   if (results.faceLandmarks && results.faceLandmarks.length > 0) {
     const landmarks = results.faceLandmarks[0];
     

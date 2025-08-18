@@ -43,7 +43,7 @@ export const startVideoStream = createAsyncThunk(
       await dispatch(startTracking(videoElement)).unwrap();
       
       return stream
-    } catch (error) {
+    } catch {
       return rejectWithValue('Failed to access camera. Please make sure you have granted camera permissions.')
     }
   }
@@ -52,7 +52,7 @@ export const startVideoStream = createAsyncThunk(
 export const stopVideoStream = createAsyncThunk(
   'videoStream/stop',
   async (_, { getState, dispatch }) => {
-    const state = getState() as any
+    const state = getState() as { videoStream: { stream: MediaStream | null } }
     const stream = state.videoStream.stream
     
     if (stream) {
@@ -96,7 +96,7 @@ const videoStreamSlice = createSlice({
       })
       .addCase(startVideoStream.rejected, (state, action) => {
         state.isActive = false
-        state.error = action.payload as string
+        state.error = action.payload as string || 'Failed to start video stream'
       })
       .addCase(stopVideoStream.fulfilled, (state) => {
         state.isActive = false

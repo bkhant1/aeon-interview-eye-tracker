@@ -10,7 +10,7 @@ const generateSessionId = () => {
 export const sendCalibrationData = createAsyncThunk(
   'app/sendCalibrationData',
   async (_, { getState }) => {
-    const state = getState() as any
+    const state = getState() as { app: { sessionId: string; calibrationPoints: CalibrationPosition[] } }
     const { sessionId, calibrationPoints } = state.app
     
     try {
@@ -43,7 +43,7 @@ export const sendCalibrationData = createAsyncThunk(
 export const sendRecordingData = createAsyncThunk(
   'app/sendRecordingData',
   async (recordingBuffer: EyePosition[], { getState }) => {
-    const state = getState() as any
+    const state = getState() as { app: { sessionId: string; recordingNumber: number } }
     const { sessionId, recordingNumber } = state.app
     
     try {
@@ -107,23 +107,23 @@ const appSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(sendCalibrationData.pending, (_state) => {
+      .addCase(sendCalibrationData.pending, () => {
         // Optional: Add loading state if needed
       })
-      .addCase(sendCalibrationData.fulfilled, (_state) => {
+      .addCase(sendCalibrationData.fulfilled, () => {
         // Calibration data sent successfully
       })
-      .addCase(sendCalibrationData.rejected, (_state, action) => {
+      .addCase(sendCalibrationData.rejected, (_, action) => {
         // Handle error if needed
         console.error('Failed to send calibration data:', action.error)
       })
-      .addCase(sendRecordingData.pending, (_state) => {
+      .addCase(sendRecordingData.pending, () => {
         // Optional: Add loading state if needed
       })
-      .addCase(sendRecordingData.fulfilled, (_state) => {
+      .addCase(sendRecordingData.fulfilled, () => {
         // Recording data sent successfully
       })
-      .addCase(sendRecordingData.rejected, (_state, action) => {
+      .addCase(sendRecordingData.rejected, (_, action) => {
         // Handle error if needed
         console.error('Failed to send recording data:', action.error)
       })

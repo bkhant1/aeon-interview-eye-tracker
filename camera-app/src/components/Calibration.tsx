@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAppDispatch, useAppSelector } from '../store/hooks'
 import { addCalibrationPoint, sendCalibrationData } from '../store/appSlice'
 import type { CalibrationPosition } from '../types'
@@ -13,7 +13,7 @@ export default function Calibration({ onCalibrationComplete }: CalibrationProps)
   const [currentCalibrationPoint, setCurrentCalibrationPoint] = useState<number>(0)
   const [showCameraError, setShowCameraError] = useState<boolean>(false)
 
-  const calibrationSteps = [
+  const calibrationSteps = useMemo(() => [
     { 
       instruction: "By moving only your eyes, look as far LEFT as you can, then press SPACEBAR",
       label: "LEFT",
@@ -29,9 +29,9 @@ export default function Calibration({ onCalibrationComplete }: CalibrationProps)
       label: "RIGHT",
       gaze_direction: 'right' as const
     }
-  ];
+  ], []);
 
-  const captureCalibrationPoint = () => {
+  const captureCalibrationPoint = useCallback(() => {
     // Check if we have valid eye data
     if (!currentEyeData) {
       setShowCameraError(true)
@@ -54,7 +54,7 @@ export default function Calibration({ onCalibrationComplete }: CalibrationProps)
       dispatch(sendCalibrationData())
       onCalibrationComplete()
     }
-  }
+  }, [currentEyeData, currentCalibrationPoint, dispatch, onCalibrationComplete, calibrationSteps])
 
   // Handle spacebar press
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function Calibration({ onCalibrationComplete }: CalibrationProps)
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [currentCalibrationPoint, currentEyeData])
+  }, [currentCalibrationPoint, currentEyeData, captureCalibrationPoint])
 
   const currentStep = calibrationSteps[currentCalibrationPoint]
 

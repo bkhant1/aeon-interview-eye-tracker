@@ -2,17 +2,17 @@ import { useState, useEffect } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useAppSelector, useAppDispatch } from '../store/hooks'
 import { fetchAllSessions, fetchRecordingData, setSelectedSession, setSelectedRecording } from '../store/playbackSlice'
-import { calculateEyesNormalizedRelativePosition, averageEyeSpeed } from '../utils/positionCalculations'
+import { averageEyeSpeed } from '../utils/positionCalculations'
+import type { Session, Recording } from '../types'
 
 export default function PlaybackTab() {
   const dispatch = useAppDispatch()
   const [rangeStart, setRangeStart] = useState(0)
   const [rangeEnd, setRangeEnd] = useState(100)
   const [selectedEye, setSelectedEye] = useState<'left' | 'right'>('left')
-  const [useNormalization, setUseNormalization] = useState(true)
+  const [useNoiseReduction, setUseNoiseReduction] = useState(true)
 
   const { sessions, selectedSession, selectedRecording, recordingData, isLoading, error } = useAppSelector(state => state.playback)
-  const calibrationPoints = useAppSelector(state => state.app.calibrationPoints)
 
   // Fetch sessions on component mount
   useEffect(() => {
@@ -30,11 +30,11 @@ export default function PlaybackTab() {
     setRangeEnd(Math.max(newEnd, rangeStart + 1))
   }
 
-  const handleSessionSelect = (session: any) => {
+  const handleSessionSelect = (session: Session) => {
     dispatch(setSelectedSession(session))
   }
 
-  const handleRecordingSelect = async (recording: any) => {
+  const handleRecordingSelect = async (recording: Recording) => {
     dispatch(setSelectedRecording(recording))
     
     // Fetch the recording data
@@ -42,7 +42,7 @@ export default function PlaybackTab() {
       sessionId: recording.session_id,
       recordingNumber: recording.recording_number,
       eye: selectedEye,
-      noiseReduction: false
+      noiseReduction: useNoiseReduction
     }))
   }
 
@@ -57,16 +57,21 @@ export default function PlaybackTab() {
         sessionId: selectedRecording.session_id,
         recordingNumber: selectedRecording.recording_number,
         eye: eye,
-        noiseReduction: false
+        noiseReduction: useNoiseReduction
       }))
     }
   }
 
-  const handleNormalizationChange = async (normalized: boolean) => {
-    setUseNormalization(normalized)
+  const handleNoiseReductionChange = async (noiseReduction: boolean) => {
+    setUseNoiseReduction(noiseReduction)
     if (selectedRecording) {
-      // Note: This would require backend support for non-normalized data
-      // For now, we'll just update the state
+      // Fetch the recording data with noise reduction setting
+      await dispatch(fetchRecordingData({
+        sessionId: selectedRecording.session_id,
+        recordingNumber: selectedRecording.recording_number,
+        eye: selectedEye,
+        noiseReduction: noiseReduction
+      }))
     }
   }
 
@@ -79,7 +84,7 @@ export default function PlaybackTab() {
     const startIndex = Math.floor((rangeStart / 100) * recordingData.length)
     const endIndex = Math.floor((rangeEnd / 100) * recordingData.length)
     
-    return recordingData.slice(startIndex, endIndex).map((pos, index) => ({
+    return recordingData.slice(startIndex, endIndex).map((pos) => ({
       time: (pos.timestamp - recordingData[0].timestamp) / 1000, // Convert to seconds from epoch
       x: pos.x,
       timestamp: pos.timestamp
@@ -148,12 +153,12 @@ export default function PlaybackTab() {
                 </div>
                 
                 <div className="option-group">
-                  <label htmlFor="normalization-toggle">Normalization:</label>
+                  <label htmlFor="noise-reduction-toggle">Noise reduction:</label>
                   <input
                     type="checkbox"
-                    id="normalization-toggle"
-                    checked={useNormalization}
-                    onChange={(e) => handleNormalizationChange(e.target.checked)}
+                    id="noise-reduction-toggle"
+                    checked={useNoiseReduction}
+                    onChange={(e) => handleNoiseReductionChange(e.target.checked)}
                     className="option-checkbox"
                   />
                 </div>
@@ -181,10 +186,11 @@ export default function PlaybackTab() {
                       tickLine={{ stroke: '#e2e8f0' }}
                     />
                     <Tooltip 
-                      formatter={(value, _name) => [value, 'X Position']}
+                      formatter={(value) => [value, 'X Position']}
                       labelFormatter={(label) => `Time: ${label.toFixed(2)}s`}
                     />
                     <Area 
+                      isAnimationActive={false}
                       type="monotone" 
                       dataKey="x" 
                       stroke="#667eea" 
@@ -265,7 +271,9 @@ export default function PlaybackTab() {
                 
                 {selectedSession?.session_id === session.session_id && (
                   <div className="recordings-list">
-                    {session.recordings.map((recording) => (
+                    {[...session.recordings]
+                      .sort((a, b) => a.timestamp - b.timestamp) 
+                      .map((recording) => (
                       <div 
                         key={`${recording.session_id}-${recording.recording_number}`}
                         className="recording-item"

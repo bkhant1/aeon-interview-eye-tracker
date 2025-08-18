@@ -47,6 +47,26 @@ export interface AppState {
   recordingNumber: number;
 }
 
+export interface Recording {
+  recording_number: number;
+  data_points: number;
+  duration: number;
+  timestamp: number;
+  session_id: string;
+}
+
+export interface Session {
+  session_id: string;
+  summary: {
+    session_id: string;
+    total_recordings: number;
+    has_calibration: boolean;
+    total_data_points: number;
+    recording_numbers: number[];
+  };
+  recordings: Recording[];
+}
+
 export interface RootState {
   videoStream: VideoStreamState;
   eyeTracking: EyeTrackingState;

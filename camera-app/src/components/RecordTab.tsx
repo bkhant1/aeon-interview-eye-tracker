@@ -1,6 +1,6 @@
 import { useAppSelector, useAppDispatch } from '../store/hooks'
 import { startVideoStream, stopVideoStream } from '../store/videoStreamSlice'
-import { setCurrentStep, resetApp, generateNewSessionId } from '../store/appSlice'
+import { setCurrentStep, generateNewSessionId } from '../store/appSlice'
 import { stopTracking, clearPositions, setRecording } from '../store/eyeTrackingSlice'
 import Calibration from './Calibration'
 import LiveTracking from './LiveTracking'

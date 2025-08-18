@@ -68,16 +68,14 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
     }
   }
 
-
-
   const getLiveData = () => {
-    if (eyePositions.length === 0 || calibrationPoints.length === 0) return []
+    if (recordingBuffer.length === 0 || calibrationPoints.length === 0) return []
 
     const now = Date.now()
     const tenSecondsAgo = now - 10000
 
     // 1. Filter for all data points within the last 10 seconds
-    const recentPositions = eyePositions.filter(pos => pos.timestamp >= tenSecondsAgo)
+    const recentPositions = recordingBuffer.filter(pos => pos.timestamp >= tenSecondsAgo)
 
     // 2. Map each point to the fixed [-10, 0] time domain
     return recentPositions.map(pos => {
@@ -157,21 +155,14 @@ export default function LiveTracking({ onStopTracking }: LiveTrackingProps) {
           <span className="stat-value">{latestPos?.toFixed(3)}</span>
         </div>
         <div className="stat">
-          <span className="stat-label">Points Tracked:</span>
-          <span className="stat-value">{eyePositions.length}</span>
-        </div>
-        <div className="stat">
           <span className="stat-label">Recording Buffer:</span>
           <span className="stat-value">{recordingBuffer.length}</span>
         </div>
-        <div className="stat">
-          <span className="stat-label">Window Size:</span>
-          <span className="stat-value">10s Fixed</span>
-        </div>
+
       </div>
 
       <div className="live-chart-container">
-        <h3>Live X-Axis Tracking (Fixed 10s Window)</h3>
+        <h3>Live X-Axis Tracking</h3>
         <ResponsiveContainer width="100%" height={350}>
           <AreaChart data={liveData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" />

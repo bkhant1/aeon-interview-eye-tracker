@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import { API_ENDPOINTS } from '../config/api'
-import type { EyePosition, NormalizedPosition } from '../types'
+import type { NormalizedPosition } from '../types'
 
 interface Recording {
   recording_number: number
